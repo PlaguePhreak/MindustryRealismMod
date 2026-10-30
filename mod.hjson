@@ -1,0 +1,19 @@
+#the mod name as displayed in-game
+displayName: "Grounded Industry"
+
+#the internal name of your mod
+name: "grounded-industry"
+
+author: "PlaguePhreak"
+
+#the fully qualified main class of the mod
+main: "grounded.GroundedIndustry"
+
+description: "Engineering realism for Mindustry. Power is lost over long transmission lines, with more systems (grid stability, machine heat, pipe pressure, ammo logistics) to come. Every mechanic can be toggled in Settings > Grounded Industry."
+
+version: 0.1.0
+
+#the minimum game build required to run this mod
+minGameVersion: 160.3
+
+java: true
