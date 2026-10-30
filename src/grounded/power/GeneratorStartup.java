@@ -4,6 +4,7 @@ import arc.*;
 import arc.math.*;
 import arc.struct.*;
 import arc.util.io.*;
+import grounded.heat.MachineHeat.*;
 import mindustry.content.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
@@ -65,9 +66,10 @@ public class GeneratorStartup{
         return Mathf.clamp(running ? spin + step : spin - step * 2f);
     }
 
-    public static class SpinBuild extends ConsumeGenerator.ConsumeGeneratorBuild{
+    public static class SpinBuild extends ConsumeGenerator.ConsumeGeneratorBuild implements Heated{
         /** 0 = stopped, 1 = full speed. */
         public float spin;
+        public final HeatModule heat = new HeatModule();
 
         public SpinBuild(ConsumeGenerator gen){
             gen.super();
@@ -77,6 +79,17 @@ public class GeneratorStartup{
         public void updateTile(){
             super.updateTile();
             spin = nextSpin(block, spin, productionEfficiency > 0f, delta());
+            heat.update(this, productionEfficiency * (GeneratorStartup.enabled() ? spin : 1f));
+        }
+
+        @Override
+        public HeatModule heat(){
+            return heat;
+        }
+
+        @Override
+        public float efficiencyScale(){
+            return super.efficiencyScale() * heat.throttle();
         }
 
         @Override

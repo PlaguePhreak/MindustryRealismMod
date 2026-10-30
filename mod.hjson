@@ -9,9 +9,9 @@ author: "PlaguePhreak"
 #the fully qualified main class of the mod
 main: "grounded.GroundedIndustry"
 
-description: "Engineering realism for Mindustry. Power is lost over long transmission lines, overloaded grids trip breakers, and generators take time to spin up. More systems (machine heat, pipe pressure, ammo logistics) to come. Every mechanic can be toggled in Settings > Grounded Industry."
+description: "Engineering realism for Mindustry. Power is lost over long transmission lines, overloaded grids trip breakers, generators take time to spin up, and hot machines need cooling. More systems (pipe pressure, steelmaking, ammo logistics) to come. Every mechanic can be toggled in Settings > Grounded Industry."
 
-version: 0.2.0
+version: 0.3.0
 
 #the minimum game build required to run this mod
 minGameVersion: 160.3

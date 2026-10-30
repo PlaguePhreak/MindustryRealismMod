@@ -54,6 +54,7 @@ public class GridCheck{
 
                 LineLoss.apply();
                 GeneratorStartup.apply();
+                grounded.heat.MachineHeat.apply();
                 add(logic = new Logic());
                 content.init();
                 LineLoss.addBars();

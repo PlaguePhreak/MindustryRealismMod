@@ -9,7 +9,7 @@ Engineering realism for Mindustry (v160+). Early game stays close to vanilla; ea
 | Power line loss | Done |
 | Brownouts and load shedding | Done |
 | Generator startup time | Done |
-| Machine heat and cooling | Planned |
+| Machine heat and cooling | Done |
 | Pipe pressure | Planned |
 | Steelmaking chain | Planned |
 | Turret magazines and barrel heat | Planned |
@@ -46,16 +46,37 @@ Fuel-burning generators ramp up to full output instead of starting instantly, an
 
 The RTG, solar panels and thermal generators start instantly. A "Spin-up" bar shows progress, and a setting scales all startup times from 25% to 300%. A generator saved while running loads back at full speed.
 
+### Machine heat and cooling
+
+Furnaces, smelters and fuel generators heat up while they work and lose heat to the air. Each machine has a heat load: the heat it settles at when running flat out with no cooling, where 100% is its safe limit. Above 100% it throttles itself, and above 120% it starts taking damage (0.5% of its health per second). Heat settles over about 20 seconds.
+
+Machines without a liquid tank gain an optional coolant input. Water roughly triples cooling and cryofluid gives about 5.5 times. The steam generator is cooled by its own water and the differential generator by its cryofluid.
+
+| Machine | Heat load (no coolant) | Uncooled result |
+| --- | --- | --- |
+| Differential generator | 160% | Always cooled by its cryofluid |
+| Surge smelter | 140% | Settles at 117%, runs at 83% speed |
+| Steam generator | 130% | Always cooled by its water |
+| Melter | 120% | Throttles slightly (can't take coolant) |
+| Silicon smelter | 115% | Throttles slightly |
+| Phase weaver | 110% | Throttles slightly |
+| Kiln | 90% | Fine |
+| Combustion generator | 80% | Fine |
+| Plastanium compressor | 80% | Fine |
+
+Each of these machines shows a heat bar. Heat isn't saved, so machines start cold after loading. This keeps saves compatible if the mod is removed.
+
 ## Building
 
 `./gradlew jar` builds `build/libs/<folder name>Desktop.jar`. `./gradlew deploy` also builds the Android version (needs the Android SDK's `d8` on your PATH). GitHub Actions builds both on every push, and attaches the jar to each published release.
 
 ## Checks
 
-`test/LineLossCheck.java` and `test/GridCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
+`test/LineLossCheck.java`, `test/GridCheck.java` and `test/HeatCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
 
 ```
 javac --release 17 -sourcepath src -cp server-release.jar -d build/check $(find src test -name '*.java')
 java -cp server-release.jar:build/check LineLossCheck
 java -cp server-release.jar:build/check GridCheck
+java -cp server-release.jar:build/check HeatCheck
 ```
