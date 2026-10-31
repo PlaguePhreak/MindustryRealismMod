@@ -3,6 +3,7 @@ package grounded;
 import arc.util.*;
 import grounded.heat.*;
 import grounded.liquid.*;
+import grounded.planet.*;
 import grounded.power.*;
 import mindustry.content.*;
 import mindustry.content.TechTree.*;
@@ -24,6 +25,7 @@ public class GroundedIndustry extends Mod{
         GeneratorStartup.apply();
         MachineHeat.apply();
         PipePressure.apply();
+        GroundedPlanets.load();
     }
 
     @Override
@@ -51,6 +53,7 @@ public class GroundedIndustry extends Mod{
                 table.checkPref(PipePressure.settingEnabled, true);
                 table.checkPref(GeneratorStartup.settingEnabled, true);
                 table.sliderPref(GeneratorStartup.settingScale, GeneratorStartup.defaultScale, 25, 300, 25, v -> v + "%");
+                table.checkPref(Climate.settingEnabled, true);
             });
         }
     }

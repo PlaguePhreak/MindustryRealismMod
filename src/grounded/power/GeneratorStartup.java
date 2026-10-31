@@ -5,6 +5,7 @@ import arc.math.*;
 import arc.struct.*;
 import arc.util.io.*;
 import grounded.heat.MachineHeat.*;
+import grounded.planet.*;
 import mindustry.content.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
@@ -59,7 +60,7 @@ public class GeneratorStartup{
 
     /** Advances spin toward running or stopped. Exposed for checks. */
     public static float nextSpin(Block block, float spin, boolean running, float delta){
-        float seconds = startupSeconds.get(block, 0f) * Core.settings.getInt(settingScale, defaultScale) / 100f;
+        float seconds = startupSeconds.get(block, 0f) * Core.settings.getInt(settingScale, defaultScale) / 100f * Climate.startupScale();
         if(seconds <= 0f) return running ? 1f : 0f;
 
         float step = delta / (seconds * 60f);
