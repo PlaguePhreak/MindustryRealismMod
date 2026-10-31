@@ -1,6 +1,7 @@
 package grounded;
 
 import arc.util.*;
+import grounded.combat.*;
 import grounded.heat.*;
 import grounded.liquid.*;
 import grounded.planet.*;
@@ -25,6 +26,7 @@ public class GroundedIndustry extends Mod{
         GeneratorStartup.apply();
         MachineHeat.apply();
         PipePressure.apply();
+        TurretRealism.apply();
         GroundedPlanets.load();
     }
 
@@ -34,6 +36,7 @@ public class GroundedIndustry extends Mod{
         GeneratorStartup.addBars();
         MachineHeat.addBars();
         PipePressure.addBars();
+        TurretRealism.addBars();
         GridStability.init();
 
         //research the booster pump after the pulse conduit
@@ -51,6 +54,8 @@ public class GroundedIndustry extends Mod{
                 table.sliderPref(GridStability.settingThreshold, GridStability.defaultThreshold, 30, 95, 5, v -> v + "%");
                 table.checkPref(MachineHeat.settingEnabled, true);
                 table.checkPref(PipePressure.settingEnabled, true);
+                table.checkPref(TurretRealism.settingMagazines, true);
+                table.checkPref(TurretRealism.settingBarrelHeat, true);
                 table.checkPref(GeneratorStartup.settingEnabled, true);
                 table.sliderPref(GeneratorStartup.settingScale, GeneratorStartup.defaultScale, 25, 300, 25, v -> v + "%");
                 table.checkPref(Climate.settingEnabled, true);
