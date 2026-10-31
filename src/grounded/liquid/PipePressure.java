@@ -3,6 +3,7 @@ package grounded.liquid;
 import arc.*;
 import arc.math.*;
 import arc.struct.*;
+import grounded.planet.*;
 import mindustry.content.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
@@ -74,6 +75,11 @@ public class PipePressure{
         return Core.settings.getBool(settingEnabled, true);
     }
 
+    /** Pressure lost per tile of this conduit, after climate. */
+    public static float drop(Block block){
+        return dropPerTile.get(block, 0f) * Climate.viscosityScale();
+    }
+
     public static float pressureOf(Building build){
         return build instanceof Pressurized p ? p.pressure() : 0f;
     }
@@ -141,7 +147,7 @@ public class PipePressure{
 
         @Override
         public void updateTile(){
-            pressure = Math.max(sourcePressure(lastSource) - dropPerTile.get(block, 0f), 0f);
+            pressure = Math.max(sourcePressure(lastSource) - drop(block), 0f);
             super.updateTile();
         }
 
@@ -172,7 +178,7 @@ public class PipePressure{
 
         @Override
         public void updateTile(){
-            pressure = Math.max(sourcePressure(lastSource) - dropPerTile.get(block, 0f), 0f);
+            pressure = Math.max(sourcePressure(lastSource) - drop(block), 0f);
             super.updateTile();
         }
 

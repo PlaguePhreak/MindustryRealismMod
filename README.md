@@ -11,6 +11,8 @@ Engineering realism for Mindustry (v160+). Early game stays close to vanilla; ea
 | Generator startup time | Done |
 | Machine heat and cooling | Done |
 | Pipe pressure and booster pump | Done |
+| Planet climate and Halden | Done |
+| Rime and Cinder planets | Planned |
 | Steelmaking chain | Planned |
 | Turret magazines and barrel heat | Done |
 | Hard Realism ruleset (finite ore veins, maintenance) | Planned |
@@ -86,13 +88,34 @@ Applies to every vanilla item turret (duo, scatter, hail, salvo, ripple, fuse, c
 
 Under sustained fire, a duo gets off 22 shots in the first 10 seconds and 14 in the next 10, compared with 30 per 10 seconds in vanilla. That's a big change to defense balance, so both systems have their own on/off switch. Each turret shows a magazine bar and a barrel heat bar.
 
+### Planets and climate
+
+**Halden** is the mod's home world, a temperate planet that orbits the sun next to Serpulo. It is unlocked from the start: pick it in the planet view and launch from the sector marked with a house icon ("Landing Site"). It shares Serpulo's blocks and research, and has its own node at the root of the research tree that lists its resources and climate. Every sector is generated in code, with no hand-made maps:
+
+- The ground follows latitude and height. There are ice caps at the poles, grassland, mud flats and rivers in the temperate band, and rust-red ferric hills toward the equator.
+- Copper and lead are everywhere. Coal basins form in the lowlands, titanium in the colder sectors, and thorium in the hottest hills. The landing sector has copper, lead and coal but no titanium.
+- Sectors have derelict ruins on resources, and either wave spawns or an enemy base. About a quarter of sectors start with an enemy base, never next to the landing zone.
+
+**Climate.** Each modded planet has an air temperature at its equator and at its poles. Halden runs from 30°C at the equator to -20°C at the poles. The current sector's temperature feeds the other systems:
+
+| Effect | At -20°C (Halden poles) | At 30°C (Halden equator) |
+| --- | --- | --- |
+| Machine heat | Kiln settles at 76% instead of 90% | Kiln settles at 96% |
+| Pipe pressure drop | x1.42 (cold water is thicker) | x0.82 |
+| Generator startup time | x1.35 | x0.96 |
+| Power line loss | x0.86 | x1.06 (hot copper resists more) |
+
+At 15°C every effect is neutral. Vanilla planets have no climate, so they play as before. The climate can be switched off in settings.
+
+Rime (a frozen moon) and Cinder (a volcanic world) are planned next.
+
 ## Building
 
 `./gradlew jar` builds `build/libs/<folder name>Desktop.jar`. `./gradlew deploy` also builds the Android version (needs the Android SDK's `d8` on your PATH). GitHub Actions builds both on every push, and attaches the jar to each published release.
 
 ## Checks
 
-`test/LineLossCheck.java`, `test/GridCheck.java`, `test/HeatCheck.java`, `test/PressureCheck.java` and `test/TurretCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
+`test/LineLossCheck.java`, `test/GridCheck.java`, `test/HeatCheck.java`, `test/PressureCheck.java`, `test/TurretCheck.java` and `test/PlanetCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
 
 ```
 javac --release 17 -sourcepath src -cp server-release.jar -d build/check $(find src test -name '*.java')
@@ -101,4 +124,5 @@ java -cp server-release.jar:build/check GridCheck
 java -cp server-release.jar:build/check HeatCheck
 java -cp server-release.jar:build/check PressureCheck
 java -cp server-release.jar:build/check TurretCheck
+java -cp server-release.jar:build/check PlanetCheck
 ```
