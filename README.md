@@ -12,7 +12,7 @@ Engineering realism for Mindustry (v160+). Early game stays close to vanilla; ea
 | Machine heat and cooling | Done |
 | Pipe pressure and booster pump | Done |
 | Steelmaking chain | Planned |
-| Turret magazines and barrel heat | Planned |
+| Turret magazines and barrel heat | Done |
 | Hard Realism ruleset (finite ore veins, maintenance) | Planned |
 
 ### Power line loss
@@ -76,13 +76,23 @@ The **Booster Pump** (2 metaglass, 2 silicon, 2 titanium, 0.3 power/s) sits inli
 
 The booster pump's sprites are placeholders.
 
+### Turret magazines and barrel heat
+
+Applies to every vanilla item turret (duo, scatter, hail, salvo, ripple, fuse, cyclone, spectre, foreshadow, swarmer, and the Erekir item turrets).
+
+**Magazines.** A turret fires about 6 seconds' worth of shots, then stops to reload. A magazine holds 3 to 60 shots, and the reload takes 2 s plus 0.75 s per tile of turret size. A duo, for example, fires 18 shots, then reloads for 2.75 s. Ammo use is unchanged.
+
+**Barrel heat.** Each shot heats the barrel, enough that nonstop fire would reach 100% in about 8 seconds. The barrel cools fully in about 10 seconds on its own. Coolant cools it faster: water by 2.2 times, cryofluid by 3.7 times. Coolant still speeds up reloading as in vanilla. Above 70% heat, the fire rate drops (down to 25% at 100%) and shots spread by up to 6 degrees.
+
+Under sustained fire, a duo gets off 22 shots in the first 10 seconds and 14 in the next 10, compared with 30 per 10 seconds in vanilla. That's a big change to defense balance, so both systems have their own on/off switch. Each turret shows a magazine bar and a barrel heat bar.
+
 ## Building
 
 `./gradlew jar` builds `build/libs/<folder name>Desktop.jar`. `./gradlew deploy` also builds the Android version (needs the Android SDK's `d8` on your PATH). GitHub Actions builds both on every push, and attaches the jar to each published release.
 
 ## Checks
 
-`test/LineLossCheck.java`, `test/GridCheck.java`, `test/HeatCheck.java` and `test/PressureCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
+`test/LineLossCheck.java`, `test/GridCheck.java`, `test/HeatCheck.java`, `test/PressureCheck.java` and `test/TurretCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
 
 ```
 javac --release 17 -sourcepath src -cp server-release.jar -d build/check $(find src test -name '*.java')
@@ -90,4 +100,5 @@ java -cp server-release.jar:build/check LineLossCheck
 java -cp server-release.jar:build/check GridCheck
 java -cp server-release.jar:build/check HeatCheck
 java -cp server-release.jar:build/check PressureCheck
+java -cp server-release.jar:build/check TurretCheck
 ```
