@@ -2,16 +2,28 @@ package grounded.planet;
 
 import arc.graphics.*;
 import mindustry.content.*;
+import mindustry.content.TechTree.*;
 import mindustry.game.*;
 import mindustry.graphics.g3d.*;
 import mindustry.type.*;
+import mindustry.world.meta.*;
 
 /** The mod's planets. Rime and Cinder will join Halden here. */
 public class GroundedPlanets{
+    public static final Stat resources = new Stat("gi-resources"), climate = new Stat("gi-climate");
+
     public static Planet halden;
 
     public static void load(){
-        halden = new Planet("halden", Planets.sun, 1f, 3){{
+        halden = new Planet("halden", Planets.sun, 1f, 3){
+            @Override
+            public void setStats(){
+                //shown when the planet is opened from the research tree or the core database
+                stats.add(resources, StatValues.content(HaldenGenerator.resources()));
+                var c = Climate.planets.get(this);
+                if(c != null) stats.add(climate, "@ to @°C", (int)c.poles, (int)c.equator);
+            }
+        {
             generator = new HaldenGenerator();
             meshLoader = () -> new HexMesh(this, 6);
             cloudMeshLoader = () -> new MultiMesh(
@@ -51,5 +63,8 @@ public class GroundedPlanets{
         }};
         //temperate at the equator, freezing at the poles
         Climate.planets.put(halden, new Climate(30f, -20f));
+
+        //a node at the root of the research tree, so Halden and its resources can be looked up there
+        new TechNode(Planets.serpulo.techTree, halden, ItemStack.empty);
     }
 }

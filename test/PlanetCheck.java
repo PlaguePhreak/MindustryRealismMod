@@ -90,6 +90,9 @@ public class PlanetCheck{
         check("Halden has sectors", halden.sectors.size > 100);
         check("landing sector has no enemy base", !start.hasEnemyBase());
         check("some sectors have enemy bases", bases > 5 && bases < halden.sectors.size / 2);
+        check("Halden appears in the research tree", halden.techNode != null && Planets.serpulo.techTree.children.contains(halden.techNode));
+        check("Halden lists its resources", HaldenGenerator.resources().contains(Items.coal) && HaldenGenerator.resources().contains(Liquids.water));
+        check("landing site is marked", start.info.name != null && start.info.icon != null);
         check("Halden shares Serpulo's research", halden.techTree == Planets.serpulo.techTree && Blocks.mechanicalDrill.isOnPlanet(halden));
 
         //climate by latitude

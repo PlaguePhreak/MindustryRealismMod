@@ -1,5 +1,6 @@
 package grounded.planet;
 
+import arc.*;
 import arc.graphics.*;
 import arc.math.*;
 import arc.math.geom.*;
@@ -8,6 +9,7 @@ import arc.util.*;
 import arc.util.noise.*;
 import mindustry.ai.*;
 import mindustry.content.*;
+import mindustry.ctype.*;
 import mindustry.game.*;
 import mindustry.maps.generators.*;
 import mindustry.type.*;
@@ -45,6 +47,16 @@ public class HaldenGenerator extends PlanetGenerator{
      * They come out richest on the ferric and red stone of the iron hills. Add to this before a sector is generated.
      */
     public static final Seq<Block> extraOres = new Seq<>();
+
+    /** Everything a Halden sector can yield, for the planet's info page. */
+    public static Seq<UnlockableContent> resources(){
+        Seq<UnlockableContent> out = Seq.with(Items.copper, Items.lead, Items.sand, Items.coal, Items.scrap, Items.titanium, Items.thorium);
+        for(Block ore : extraOres){
+            if(ore.itemDrop != null && !out.contains(ore.itemDrop)) out.add(ore.itemDrop);
+        }
+        out.add(Liquids.water);
+        return out;
+    }
 
     BaseGenerator basegen = new BaseGenerator();
 
@@ -88,6 +100,11 @@ public class HaldenGenerator extends PlanetGenerator{
     public void generateSector(Sector sector){
         //enemy bases appear on a patchy band of sectors, never next to the landing zone
         Sector start = sector.planet.getStartSector();
+        if(sector == start){
+            //mark the suggested landing site on the globe, unless the player renamed it
+            if(sector.info.name == null) sector.info.name = Core.bundle == null ? "Landing Site" : Core.bundle.get("gi-landing-site", "Landing Site");
+            if(sector.info.icon == null && sector.info.contentIcon == null) sector.info.icon = "home";
+        }
         if(sector == start || start.near().contains(sector)) return;
 
         Vec3 v = sector.tile.v;
