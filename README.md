@@ -11,7 +11,7 @@ Engineering realism for Mindustry (v160+). Early game stays close to vanilla; ea
 | Generator startup time | Done |
 | Machine heat and cooling | Done |
 | Pipe pressure and booster pump | Done |
-| Steelmaking chain | Planned |
+| Steelmaking chain | Done |
 | Turret magazines and barrel heat | Done |
 | Hard Realism ruleset (finite ore veins, maintenance) | Planned |
 
@@ -86,13 +86,37 @@ Applies to every vanilla item turret (duo, scatter, hail, salvo, ripple, fuse, c
 
 Under sustained fire, a duo gets off 22 shots in the first 10 seconds and 14 in the next 10, compared with 30 per 10 seconds in vanilla. That's a big change to defense balance, so both systems have their own on/off switch. Each turret shows a magazine bar and a barrel heat bar.
 
+### Steelmaking
+
+Serpulo has no iron ore, so iron comes out of sand by magnet. Where a map does have iron ore, it can be mined with a mechanical drill. The ore can also be placed in the map editor, and the Halden planet will generate it.
+
+| Step | Block | Size | In | Out | Power |
+| --- | --- | --- | --- | --- | --- |
+| 1a | Magnetic Separator | 2x2 | 4 sand | 1 iron concentrate / 1 s | 24/s |
+| 1b | Ore Concentrator | 2x2 | 2 iron ore + water | 2 iron concentrate + 1 sand / 0.75 s | 18/s |
+| 2 | Coke Oven | 2x2 | 2 coal | 1 coke / 1.5 s | none |
+| 3 | Sinter Plant | 2x2 | 3 iron concentrate + 1 coke | 2 sinter / 1.33 s | 30/s |
+| 4 | Blast Furnace | 3x3 | 3 sinter + 2 coke + 1 sand (flux) | 2 pig iron + 4 slag/s / 2 s | 60/s |
+| 5 | Electric Arc Furnace | 3x3 | 2 pig iron + 1 scrap | 2 steel / 1.5 s | 240/s |
+
+The blast furnace's slag has to be piped away, for example to a separator, which turns it back into copper, lead, graphite and titanium. If the slag has nowhere to go, the furnace stops. The coke oven, sinter plant, blast furnace and arc furnace all use machine heat, and the two big furnaces need water to run at full speed. The arc furnace's 240/s power draw is a good test of a grid's brownout margin.
+
+A full line making 74 steel per minute takes 1 arc furnace, about 1.3 blast furnaces, 1 sinter plant, 2 to 3 magnetic separators and about 3 coke ovens.
+
+**Built from steel:**
+
+- **Steel Wall** (6 steel) and **Large Steel Wall**: 640 and 2560 health with armor 6, compared with 440 and armor 0 for titanium.
+- **Transmission Tower** (10 steel, 8 silicon, 10 copper): a 2x2 power node with a 30-tile range and 4 links, which loses only a quarter of the usual line loss per tile.
+
+Everything appears in the Serpulo tech tree: the separator after the pulverizer, the coke oven after the graphite press, walls after titanium walls, and the tower after the large power node. All sprites for this chain are placeholders.
+
 ## Building
 
 `./gradlew jar` builds `build/libs/<folder name>Desktop.jar`. `./gradlew deploy` also builds the Android version (needs the Android SDK's `d8` on your PATH). GitHub Actions builds both on every push, and attaches the jar to each published release.
 
 ## Checks
 
-`test/LineLossCheck.java`, `test/GridCheck.java`, `test/HeatCheck.java`, `test/PressureCheck.java` and `test/TurretCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
+`test/LineLossCheck.java`, `test/GridCheck.java`, `test/HeatCheck.java`, `test/PressureCheck.java`, `test/TurretCheck.java` and `test/SteelCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
 
 ```
 javac --release 17 -sourcepath src -cp server-release.jar -d build/check $(find src test -name '*.java')
@@ -101,4 +125,5 @@ java -cp server-release.jar:build/check GridCheck
 java -cp server-release.jar:build/check HeatCheck
 java -cp server-release.jar:build/check PressureCheck
 java -cp server-release.jar:build/check TurretCheck
+java -cp server-release.jar:build/check SteelCheck
 ```

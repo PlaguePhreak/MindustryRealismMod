@@ -27,6 +27,9 @@ public class LineLoss{
     /** Maximum loss per grid, in percent. */
     public static final int defaultCap = 40;
 
+    /** Loss multiplier per node block; anything not listed is 1. High-voltage towers lose less. */
+    public static final ObjectFloatMap<Block> lossFactor = new ObjectFloatMap<>();
+
     /** Per-grid cache of total laser length, recomputed at most once per tick. */
     private static final IntMap<GridCache> cache = new IntMap<>();
 
@@ -106,7 +109,7 @@ public class LineLoss{
             float len = build.dst(other) / tilesize;
             sum += isLossNode(other.block) ? len / 2f : len;
         }
-        return sum;
+        return sum * lossFactor.get(build.block, 1f);
     }
 
     static float gridTiles(PowerGraph graph){
