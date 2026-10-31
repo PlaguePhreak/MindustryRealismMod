@@ -2,7 +2,10 @@ package grounded;
 
 import arc.util.*;
 import grounded.heat.*;
+import grounded.liquid.*;
 import grounded.power.*;
+import mindustry.content.*;
+import mindustry.content.TechTree.*;
 import mindustry.gen.*;
 import mindustry.mod.*;
 
@@ -20,6 +23,7 @@ public class GroundedIndustry extends Mod{
         LineLoss.apply();
         GeneratorStartup.apply();
         MachineHeat.apply();
+        PipePressure.apply();
     }
 
     @Override
@@ -27,7 +31,14 @@ public class GroundedIndustry extends Mod{
         LineLoss.addBars();
         GeneratorStartup.addBars();
         MachineHeat.addBars();
+        PipePressure.addBars();
         GridStability.init();
+
+        //research the booster pump after the pulse conduit
+        var parent = TechTree.all.find(n -> n.content == Blocks.pulseConduit);
+        if(parent != null){
+            new TechNode(parent, PipePressure.boosterPump, PipePressure.boosterPump.researchRequirements());
+        }
 
         if(ui != null && ui.settings != null){
             ui.settings.addCategory("Grounded Industry", Icon.power, table -> {
@@ -37,6 +48,7 @@ public class GroundedIndustry extends Mod{
                 table.checkPref(GridStability.settingEnabled, true);
                 table.sliderPref(GridStability.settingThreshold, GridStability.defaultThreshold, 30, 95, 5, v -> v + "%");
                 table.checkPref(MachineHeat.settingEnabled, true);
+                table.checkPref(PipePressure.settingEnabled, true);
                 table.checkPref(GeneratorStartup.settingEnabled, true);
                 table.sliderPref(GeneratorStartup.settingScale, GeneratorStartup.defaultScale, 25, 300, 25, v -> v + "%");
             });

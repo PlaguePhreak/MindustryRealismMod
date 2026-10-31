@@ -10,7 +10,7 @@ Engineering realism for Mindustry (v160+). Early game stays close to vanilla; ea
 | Brownouts and load shedding | Done |
 | Generator startup time | Done |
 | Machine heat and cooling | Done |
-| Pipe pressure | Planned |
+| Pipe pressure and booster pump | Done |
 | Steelmaking chain | Planned |
 | Turret magazines and barrel heat | Planned |
 | Hard Realism ruleset (finite ore veins, maintenance) | Planned |
@@ -66,17 +66,28 @@ Machines without a liquid tank gain an optional coolant input. Water roughly tri
 
 Each of these machines shows a heat bar. Heat isn't saved, so machines start cold after loading. This keeps saves compatible if the mod is removed.
 
+### Pipe pressure and booster pump
+
+Pumps push liquid at full pressure. Each conduit tile loses some of it: 2.5% per tile for conduits, and 1.5% for pulse and plated conduits. Tanks, routers, junctions and bridges hand liquid on at only 60% pressure, since they aren't pumps. Liquid sources and machines that output liquid count as pumps.
+
+At 50% pressure or more, a conduit flows as in vanilla. Below that, its flow is capped at a share of its capacity that shrinks as pressure falls. At zero pressure a plain conduit carries 30/s, a pulse conduit 60/s and a plated conduit 75/s. So a rotary pump's 48/s won't make it down 40 tiles of plain conduit without help.
+
+The **Booster Pump** (2 metaglass, 2 silicon, 2 titanium, 0.3 power/s) sits inline in a pipe and restores full pressure. Liquid goes in the back and out the front. It's researched after the pulse conduit. Unpowered, it passes liquid through like a short conduit. Conduits and boosters show a pressure bar.
+
+The booster pump's sprites are placeholders.
+
 ## Building
 
 `./gradlew jar` builds `build/libs/<folder name>Desktop.jar`. `./gradlew deploy` also builds the Android version (needs the Android SDK's `d8` on your PATH). GitHub Actions builds both on every push, and attaches the jar to each published release.
 
 ## Checks
 
-`test/LineLossCheck.java`, `test/GridCheck.java` and `test/HeatCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
+`test/LineLossCheck.java`, `test/GridCheck.java`, `test/HeatCheck.java` and `test/PressureCheck.java` run the real game code headlessly and check each system's numbers. Download `server-release.jar` for v160 from the Mindustry releases, then:
 
 ```
 javac --release 17 -sourcepath src -cp server-release.jar -d build/check $(find src test -name '*.java')
 java -cp server-release.jar:build/check LineLossCheck
 java -cp server-release.jar:build/check GridCheck
 java -cp server-release.jar:build/check HeatCheck
+java -cp server-release.jar:build/check PressureCheck
 ```
