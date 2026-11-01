@@ -3,6 +3,7 @@ import arc.backend.headless.*;
 import arc.files.*;
 import arc.struct.*;
 import arc.util.*;
+import grounded.content.*;
 import grounded.heat.*;
 import grounded.liquid.*;
 import grounded.planet.*;
@@ -44,11 +45,14 @@ public class PlanetCheck{
                 Vars.init();
                 world = new World();
                 content.createBaseContent();
+                GIItems.load();
+                GIBlocks.load();
                 LineLoss.apply();
                 GeneratorStartup.apply();
                 MachineHeat.apply();
                 PipePressure.apply();
                 GroundedPlanets.load();
+                HaldenGenerator.extraOres.add(GIBlocks.oreIron);
                 add(logic = new Logic());
                 content.init();
                 bases.load();
@@ -105,6 +109,7 @@ public class PlanetCheck{
         check("vanilla planets are neutral", Climate.temperatureOf(Planets.serpulo.sectors.first()) == Climate.reference);
 
         //generate sectors: landing, polar, equatorial and an enemy base
+        int ironTotal = 0;
         Seq<Sector> samples = Seq.with(start, polar, equator, halden.sectors.find(s -> s.hasEnemyBase() && s != polar && s != equator));
         for(Sector sector : samples){
             if(sector == null) continue;
@@ -126,17 +131,21 @@ public class PlanetCheck{
 
             boolean core = state.rules.defaultTeam.core() != null;
             boolean enemy = state.rules.waveTeam.cores().any() || spawner.countSpawns() > 0;
-            System.out.printf("sector %d (%.0f°C): %dx%d in %dms, %d%% open, floors: %s| copper %d, lead %d, coal %d, titanium %d, thorium %d, enemy cores %d, spawns %d%n",
+            System.out.printf("sector %d (%.0f°C): %dx%d in %dms, %d%% open, floors: %s| copper %d, lead %d, coal %d, titanium %d, thorium %d, iron %d, enemy cores %d, spawns %d%n",
                 sector.id, Climate.temperatureOf(sector), world.width(), world.height(), ms, open * 100 / (world.width() * world.height()), sb,
-                ores.get(Blocks.oreCopper), ores.get(Blocks.oreLead), ores.get(Blocks.oreCoal), ores.get(Blocks.oreTitanium), ores.get(Blocks.oreThorium),
+                ores.get(Blocks.oreCopper), ores.get(Blocks.oreLead), ores.get(Blocks.oreCoal), ores.get(Blocks.oreTitanium), ores.get(Blocks.oreThorium), ores.get(GIBlocks.oreIron),
                 state.rules.waveTeam.cores().size, spawner.countSpawns());
 
+            ironTotal += ores.get(GIBlocks.oreIron);
             check("sector " + sector.id + " has a player core", core);
             check("sector " + sector.id + " has copper and lead", ores.get(Blocks.oreCopper) > 50 && ores.get(Blocks.oreLead) > 50);
             check("sector " + sector.id + " has enemies", enemy);
             check("sector " + sector.id + " has room to build", open > world.width() * world.height() / 5);
             if(sector.hasEnemyBase()) check("sector " + sector.id + " enemy base has cores", state.rules.waveTeam.cores().any() && state.rules.attackMode);
         }
+
+        check("Halden generates iron ore", ironTotal > 50);
+        check("iron ore is listed in Halden's resources", HaldenGenerator.resources().contains(GIItems.ironOre));
 
         //climate effects on the realism systems
         state.rules.sector = polar;

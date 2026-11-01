@@ -88,9 +88,14 @@ public class MachineHeat{
     /** Cooling multiplier from coolant currently in the machine's tank; 1 with none. */
     public static float cooling(Building build){
         if(build.liquids == null) return 1f;
-        var liquid = build.liquids.current();
-        if(liquid == null || !liquid.coolant || liquid.temperature > 0.5f || build.liquids.get(liquid) < 0.01f) return 1f;
-        return 1f + liquid.heatCapacity * 5f;
+        //the best coolant in the tank counts; a furnace may hold slag and water side by side
+        float best = 0f;
+        for(var liquid : content.liquids()){
+            if(liquid.coolant && liquid.temperature <= 0.5f && build.liquids.get(liquid) >= 0.01f){
+                best = Math.max(best, liquid.heatCapacity);
+            }
+        }
+        return 1f + best * 5f;
     }
 
     /** Output multiplier for a machine at this heat. */

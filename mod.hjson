@@ -9,9 +9,9 @@ author: "PlaguePhreak"
 #the fully qualified main class of the mod
 main: "grounded.GroundedIndustry"
 
-description: "Engineering realism for Mindustry. Power is lost over long transmission lines, overloaded grids trip breakers, generators take time to spin up, hot machines need cooling, long pipelines lose pressure, and turrets reload magazines and overheat. Includes Halden, a new planet whose climate changes how machines behave. More systems (steelmaking, Hard Realism) to come. Every mechanic can be toggled in Settings > Grounded Industry."
+description: "Engineering realism for Mindustry. Power is lost over long transmission lines, overloaded grids trip breakers, generators take time to spin up, hot machines need cooling, long pipelines lose pressure, turrets reload magazines and overheat, and steel takes a real blast-furnace chain. Includes Halden, a new planet whose climate changes how machines behave. Every mechanic can be toggled in Settings > Grounded Industry."
 
-version: 0.5.0
+version: 0.6.0
 
 #the minimum game build required to run this mod
 minGameVersion: 160.3

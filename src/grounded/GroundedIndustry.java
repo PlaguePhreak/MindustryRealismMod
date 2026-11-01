@@ -2,6 +2,7 @@ package grounded;
 
 import arc.util.*;
 import grounded.combat.*;
+import grounded.content.*;
 import grounded.heat.*;
 import grounded.liquid.*;
 import grounded.planet.*;
@@ -22,12 +23,16 @@ public class GroundedIndustry extends Mod{
     @Override
     public void loadContent(){
         //runs after vanilla content is created but before it is initialized, so vanilla blocks can still gain consumers here
+        GIItems.load();
+        GIBlocks.load();
         LineLoss.apply();
         GeneratorStartup.apply();
         MachineHeat.apply();
         PipePressure.apply();
         TurretRealism.apply();
         GroundedPlanets.load();
+        //iron hills on Halden carry the steel chain's iron ore
+        HaldenGenerator.extraOres.add(GIBlocks.oreIron);
     }
 
     @Override
@@ -38,6 +43,8 @@ public class GroundedIndustry extends Mod{
         PipePressure.addBars();
         TurretRealism.addBars();
         GridStability.init();
+
+        GIBlocks.addResearch();
 
         //research the booster pump after the pulse conduit
         var parent = TechTree.all.find(n -> n.content == Blocks.pulseConduit);
