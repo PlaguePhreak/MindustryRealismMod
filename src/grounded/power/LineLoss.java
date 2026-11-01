@@ -4,6 +4,7 @@ import arc.*;
 import arc.math.*;
 import arc.struct.*;
 import arc.util.*;
+import grounded.planet.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
 import mindustry.ui.*;
@@ -67,7 +68,7 @@ public class LineLoss{
     }
 
     static float rate(){
-        return Core.settings.getInt(settingRate, defaultRate) / 10000f;
+        return Core.settings.getInt(settingRate, defaultRate) / 10000f * Climate.lineLossScale();
     }
 
     static float cap(){

@@ -4,6 +4,7 @@ import arc.*;
 import arc.math.*;
 import arc.struct.*;
 import arc.util.*;
+import grounded.planet.*;
 import mindustry.content.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
@@ -122,8 +123,8 @@ public class MachineHeat{
 
             float load = heatLoad.get(build.block, 0f);
             float rate = build.delta() / (timeConstant * 60f);
-            //Newtonian cooling toward load * activity / cooling
-            value += (load * activity - value * cooling(build)) * rate;
+            //Newtonian cooling toward (load * activity + ambient) / cooling; warm planets add heat, cold ones remove it
+            value += (load * activity + Climate.heatOffset() - value * cooling(build)) * rate;
             value = Math.max(value, 0f);
 
             if(value > damageHeat && !net.client()){
