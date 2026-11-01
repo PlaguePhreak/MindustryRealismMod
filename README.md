@@ -114,7 +114,7 @@ Everything appears in the Serpulo tech tree: the separator after the pulverizer,
 
 ### Planets and climate
 
-**Halden** is the mod's home world, a temperate planet that orbits the sun next to Serpulo. It is unlocked from the start: pick it in the planet view and launch from the sector marked with a house icon ("Landing Site"). It shares Serpulo's blocks and research, and has its own node at the root of the research tree that lists its resources and climate. Every sector is generated in code, with no hand-made maps:
+**Halden** is the mod's home world, a temperate planet that orbits the sun next to Serpulo. It is unlocked from the start: pick it in the planet view and launch from the sector marked with a house icon ("Landing Site"). It builds with Serpulo's blocks (plus the steel chain), but has its own research tree, picked from the research dialog's tree selector. That tree is paid for with items from Halden's sectors, not Serpulo's, and leaves out Serpulo's story sectors. A block researched in either tree is unlocked in both, because the game tracks unlocks per block. The first node in Halden's tree is the planet itself, and its info page lists Halden's resources and climate. Every sector is generated in code, with no hand-made maps:
 
 - The ground follows latitude and height. There are ice caps at the poles, grassland, mud flats and rivers in the temperate band, and rust-red ferric hills toward the equator.
 - Copper and lead are everywhere. Coal basins form in the lowlands, titanium in the colder sectors, and thorium in the hottest hills. The landing sector has copper, lead and coal but no titanium.

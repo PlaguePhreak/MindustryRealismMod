@@ -60,6 +60,7 @@ public class PlanetCheck{
                 GeneratorStartup.addBars();
                 MachineHeat.addBars();
                 PipePressure.addBars();
+                GroundedPlanets.buildTechTree();
             }
 
             @Override
@@ -94,10 +95,21 @@ public class PlanetCheck{
         check("Halden has sectors", halden.sectors.size > 100);
         check("landing sector has no enemy base", !start.hasEnemyBase());
         check("some sectors have enemy bases", bases > 5 && bases < halden.sectors.size / 2);
-        check("Halden appears in the research tree", halden.techNode != null && Planets.serpulo.techTree.children.contains(halden.techNode));
+        check("Halden has its own research tree", TechTree.roots.contains(GroundedPlanets.haldenTree) && halden.techTree == GroundedPlanets.haldenTree);
+        int serpuloNodes = 0, haldenNodes = 0;
+        for(var n : TechTree.all){
+            if(n.rootNode == Planets.serpulo.techTree) serpuloNodes++;
+            if(n.rootNode == GroundedPlanets.haldenTree) haldenNodes++;
+        }
+        System.out.printf("research nodes: Serpulo %d, Halden %d%n", serpuloNodes, haldenNodes);
+        check("Halden's tree mirrors Serpulo's blocks", haldenNodes > 150 && GroundedPlanets.haldenTree.children.contains(n -> n.content == halden));
+        check("Halden's tree has no Serpulo sectors", !TechTree.all.contains(n -> n.rootNode == GroundedPlanets.haldenTree && n.content instanceof SectorPreset));
+        check("blocks still point at their Serpulo node", Blocks.conveyor.techNode.rootNode == Planets.serpulo.techTree && Blocks.conveyor.techNodes.size == 2 && halden.techNodes.size == 1);
+        check("Halden blocks need no Serpulo sectors", !TechTree.all.contains(n -> n.rootNode == GroundedPlanets.haldenTree && n.objectives.contains(o -> o instanceof mindustry.game.Objectives.SectorComplete)));
+        check("Halden is not in Serpulo's research tree", !Planets.serpulo.techTree.children.contains(n -> n.content == halden));
         check("Halden lists its resources", HaldenGenerator.resources().contains(Items.coal) && HaldenGenerator.resources().contains(Liquids.water));
         check("landing site is marked", start.info.name != null && start.info.icon != null);
-        check("Halden shares Serpulo's research", halden.techTree == Planets.serpulo.techTree && Blocks.mechanicalDrill.isOnPlanet(halden));
+        check("Serpulo's blocks can be built on Halden", Blocks.mechanicalDrill.isOnPlanet(halden) && GIBlocks.blastFurnace.isOnPlanet(halden));
 
         //climate by latitude
         Sector polar = halden.sectors.max(s -> Math.abs(s.tile.v.y));

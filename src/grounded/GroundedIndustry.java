@@ -52,6 +52,9 @@ public class GroundedIndustry extends Mod{
             new TechNode(parent, PipePressure.boosterPump, PipePressure.boosterPump.researchRequirements());
         }
 
+        //after every Serpulo node is in place, since Halden's tree mirrors it
+        GroundedPlanets.buildTechTree();
+
         if(ui != null && ui.settings != null){
             ui.settings.addCategory("Grounded Industry", Icon.power, table -> {
                 table.checkPref(LineLoss.settingEnabled, true);
