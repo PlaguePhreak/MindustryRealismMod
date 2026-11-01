@@ -16,7 +16,7 @@ import static grounded.liquid.PipePressure.*;
  * passes liquid through like a short conduit.
  */
 public class BoosterPump extends Block{
-    public TextureRegion bottomRegion, topRegion;
+    public TextureRegion bottomRegion, liquidRegion, topRegion;
 
     public BoosterPump(String name){
         super(name);
@@ -36,6 +36,8 @@ public class BoosterPump extends Block{
     public void load(){
         super.load();
         bottomRegion = Core.atlas.find(name + "-bottom");
+        //white mask of the channel, tinted with the liquid's colour
+        liquidRegion = Core.atlas.find(name + "-liquid");
         topRegion = Core.atlas.find(name + "-top");
     }
 
@@ -89,7 +91,7 @@ public class BoosterPump extends Block{
         public void draw(){
             Draw.rect(bottomRegion, x, y, rotdeg());
             if(liquids.currentAmount() > 0.001f){
-                Drawf.liquid(bottomRegion, x, y, liquids.currentAmount() / liquidCapacity, liquids.current().color, rotdeg());
+                Drawf.liquid(liquidRegion, x, y, liquids.currentAmount() / liquidCapacity, liquids.current().color, rotdeg());
             }
             Draw.rect(topRegion, x, y, rotdeg());
         }

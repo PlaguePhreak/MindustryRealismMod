@@ -76,8 +76,6 @@ At 50% pressure or more, a conduit flows as in vanilla. Below that, its flow is 
 
 The **Booster Pump** (2 metaglass, 2 silicon, 2 titanium, 0.3 power/s) sits inline in a pipe and restores full pressure. Liquid goes in the back and out the front. It's researched after the pulse conduit. Unpowered, it passes liquid through like a short conduit. Conduits and boosters show a pressure bar.
 
-The booster pump's sprites are placeholders.
-
 ### Turret magazines and barrel heat
 
 Applies to every vanilla item turret (duo, scatter, hail, salvo, ripple, fuse, cyclone, spectre, foreshadow, swarmer, and the Erekir item turrets).
@@ -110,7 +108,7 @@ A full line making 74 steel per minute takes 1 arc furnace, about 1.3 blast furn
 - **Steel Wall** (6 steel) and **Large Steel Wall**: 640 and 2560 health with armor 6, compared with 440 and armor 0 for titanium.
 - **Transmission Tower** (10 steel, 8 silicon, 10 copper): a 2x2 power node with a 30-tile range and 4 links, which loses only a quarter of the usual line loss per tile.
 
-Everything appears in the Serpulo tech tree: the separator after the pulverizer, the coke oven after the graphite press, walls after titanium walls, and the tower after the large power node. All sprites for this chain are placeholders.
+Everything appears in the Serpulo tech tree: the separator after the pulverizer, the coke oven after the graphite press, walls after titanium walls, and the tower after the large power node.
 
 ### Planets and climate
 
@@ -151,3 +149,7 @@ java -cp server-release.jar:build/check TurretCheck
 java -cp server-release.jar:build/check SteelCheck
 java -cp server-release.jar:build/check PlanetCheck
 ```
+
+## Sprites
+
+Every sprite is drawn by `tools/sprites/gen_sprites.py` in a chunky, low-detail take on the vanilla Serpulo style: 8 art pixels per tile (a 2x2 block is 16x16 art pixels), items and ore at 16x16, scaled up to the 32 px per tile the game expects. Most blocks are hand-drawn character grids in the script. To change one, edit it and run `python3 tools/sprites/gen_sprites.py` from the repository root (needs Pillow and numpy). The furnaces also get a `-top` sprite, which the game lights up while they run.
