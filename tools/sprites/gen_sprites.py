@@ -19,9 +19,11 @@ import random
 import numpy as np
 from PIL import Image, ImageDraw
 
-# Art is drawn on a grid of PIXEL x PIXEL screen pixels, so 2 gives chunky 16-px-per-tile art that is saved at the
-# 32-px-per-tile size the game expects. All coordinates below are in saved (32 px per tile) units.
-PIXEL = 2
+# Art is drawn on a grid of PIXEL x PIXEL saved pixels and saved at the 32-px-per-tile size the game expects.
+# PIXEL = 4 gives 8 art pixels per tile, so a 2x2 block is 16x16 art pixels. Items and ore are 16x16 (ITEM_PIXEL = 2),
+# since they are shown alone at one tile's size. All coordinates below are in saved (32 px per tile) units.
+PIXEL = 4
+ITEM_PIXEL = 2
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "assets", "sprites")
@@ -47,9 +49,10 @@ STEEL = [hexc("eef3f8"), hexc("ccd5df"), hexc("a8b3c1"), hexc("808b9b"), hexc("5
 # ---------------------------------------------------------------- canvas and shapes
 
 class Canvas:
-    def __init__(self, w, h=None):
+    def __init__(self, w, h=None, pixel=None):
         self.size = (w, h or w)
-        self.w, self.h = w // PIXEL, (h or w) // PIXEL
+        self.p = pixel or PIXEL
+        self.w, self.h = w // self.p, (h or w) // self.p
         self.a = np.zeros((self.h, self.w, 4), np.uint8)
 
     def paint(self, mask, color):
@@ -83,20 +86,20 @@ def empty(c):
     return np.zeros((c.h, c.w), bool)
 
 
-def g(v):
+def g(c, v):
     """Saved-pixel coordinate to grid cell."""
-    return int(math.floor(v / PIXEL))
+    return int(math.floor(v / c.p))
 
 
 def grid(c):
     """Saved-pixel coordinates of each grid cell's centre."""
     ys, xs = np.mgrid[0:c.h, 0:c.w]
-    return (ys + 0.5) * PIXEL, (xs + 0.5) * PIXEL
+    return (ys + 0.5) * c.p, (xs + 0.5) * c.p
 
 
 def rect(c, x0, y0, x1, y1):
     """Inclusive pixel rectangle."""
-    x0, y0, x1, y1 = g(x0), g(y0), g(x1), g(y1)
+    x0, y0, x1, y1 = g(c, x0), g(c, y0), g(c, x1), g(c, y1)
     m = empty(c)
     m[max(y0, 0):y1 + 1, max(x0, 0):x1 + 1] = True
     return m
@@ -123,13 +126,13 @@ def ellipse(c, cx, cy, rx, ry):
 
 def poly(c, pts):
     im = Image.new("L", (c.w, c.h))
-    ImageDraw.Draw(im).polygon([(x / PIXEL, y / PIXEL) for x, y in pts], fill=255)
+    ImageDraw.Draw(im).polygon([(x / c.p, y / c.p) for x, y in pts], fill=255)
     return np.array(im) > 0
 
 
 def line(c, pts, width=1):
     im = Image.new("L", (c.w, c.h))
-    ImageDraw.Draw(im).line([(x / PIXEL, y / PIXEL) for x, y in pts], fill=255, width=max(1, round(width / PIXEL)))
+    ImageDraw.Draw(im).line([(x / c.p, y / c.p) for x, y in pts], fill=255, width=max(1, round(width / c.p)))
     return np.array(im) > 0
 
 
@@ -151,7 +154,7 @@ def runs(m):
 def bevel(c, m, light, mid, dark, width=2, raised=True):
     """Fills a shape and shades its rim: lit from the top right when raised, from the bottom left when sunk.
     width is in grid cells."""
-    width = max(1, round(width * 2 / PIXEL / 2)) if width > 1 else 1
+    width = 1
     c.paint(m, mid)
     up, right, down, left = runs(m)
     near = np.stack([up, right, down, left])
@@ -193,43 +196,87 @@ def frame(c, size, light=LIGHT, mid=MID, dark=DARK, width=None, ports=True):
             bevel(c, m, PORT_L, PORT_M, PORT_D, 1, raised=False)
 
 
-def bolts(c, pts, light=LIGHT, dark=SHADOW):
-    for x, y in pts:
-        c.paint(rect(c, x, y, x + 1, y + 1), dark)
-        c.paint(rect(c, x + 1, y, x + 1, y), light)
+def art(c, rows, pal):
+    """Paints a hand-drawn grid: one character per art pixel, '.' left empty."""
+    assert len(rows) == c.h and all(len(r) == c.w for r in rows), (len(rows), [len(r) for r in rows])
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                c.a[y, x] = pal[ch]
+
+
+# shared legend for hand-drawn blocks
+PAL = {
+    "L": LIGHT, "M": MID, "D": DARK, "S": SHADOW, "H": HOLE, "P": PORT_M,
+    "C": COPPER_M, "c": COPPER_D, "Y": YELLOW, "y": YELLOW_D, "W": WHITE,
+}
+
+
+def framed(n, inner, ports=True):
+    """Wraps an (n-2)-wide interior in the vanilla crafter frame: light top and right, dark left and bottom, ports
+    in the middle of each side."""
+    a, b = n // 2 - 2, n // 2 + 1
+    rows = []
+    for y in range(n):
+        row = []
+        for x in range(n):
+            port = ports and ((y in (0, n - 1) and a <= x <= b) or (x in (0, n - 1) and a <= y <= b))
+            if port:
+                row.append("P")
+            elif y == 0:
+                row.append("D" if x == 0 else "L")
+            elif y == n - 1:
+                row.append("L" if x == n - 1 else "D")
+            elif x == 0:
+                row.append("D")
+            elif x == n - 1:
+                row.append("L")
+            else:
+                row.append(inner[y - 1][x - 1])
+        rows.append("".join(row))
+    return rows
 
 
 # ---------------------------------------------------------------- liquid: booster pump
 
 def booster_pump():
-    """32x32, drawn facing right (rotation 0). Liquid shows through the windows on either side of the housing."""
+    """1x1, drawn facing right (rotation 0). Liquid shows through the windows either side of the housing."""
     bottom = Canvas(32)
-    bottom.paint(rect(bottom, 0, 0, 31, 3), LIGHT)
-    bottom.paint(rect(bottom, 0, 4, 31, 7), DARK)
-    bottom.paint(rect(bottom, 0, 8, 31, 23), SHADOW)
-    bottom.paint(rect(bottom, 0, 24, 31, 27), DARK)
-    bottom.paint(rect(bottom, 0, 28, 31, 31), LIGHT)
-
+    art(bottom, [
+        "LLLLLLLL",
+        "DDDDDDDD",
+        "SSSSSSSS",
+        "SSSSSSSS",
+        "SSSSSSSS",
+        "SSSSSSSS",
+        "DDDDDDDD",
+        "LLLLLLLL",
+    ], PAL)
     # white mask the game tints with the liquid's colour
     liquid = Canvas(32)
-    liquid.paint(rect(liquid, 0, 8, 31, 23), WHITE)
-
+    art(liquid, [
+        "........",
+        "........",
+        "WWWWWWWW",
+        "WWWWWWWW",
+        "WWWWWWWW",
+        "WWWWWWWW",
+        "........",
+        "........",
+    ], PAL)
     top = Canvas(32)
-    # pipe walls, as on a conduit
-    for y0 in (0, 24):
-        bevel(top, rect(top, 0, y0, 31, y0 + 7), LIGHT, MID, DARK, 1)
-    # pump housing with a sunken rotor
-    bevel(top, octo(top, 8, 2, 23, 29, 4), LIGHT, MID, DARK, 1)
-    top.paint(rect(top, 12, 12, 19, 19), SHADOW)
-    top.paint(rect(top, 14, 14, 17, 17), LIGHT)
-    # flow arrows on the housing, pointing downstream
-    for y in (4, 22):
-        top.paint(rect(top, 14, y, 15, y + 5), YELLOW)
-        top.paint(rect(top, 16, y + 2, 17, y + 3), YELLOW)
-
+    art(top, [
+        "LLLLLLLL",
+        "DDDYLLDD",
+        "..DMML..",
+        "..DSSL..",
+        "..DSSL..",
+        "..DMML..",
+        "LLDYMLLL",
+        "DDDDDDDD",
+    ], PAL)
     icon = Canvas(32)
     icon.a = np.array(Image.alpha_composite(bottom.image(), top.image()))
-
     bottom.save("blocks/booster-pump-bottom.png")
     liquid.save("blocks/booster-pump-liquid.png")
     top.save("blocks/booster-pump-top.png")
@@ -239,109 +286,97 @@ def booster_pump():
 # ---------------------------------------------------------------- steelmaking blocks
 
 def magnetic_separator():
-    """2x2. A magnetised drum lifts iron out of a sand feed; copper coils at both ends."""
+    """2x2. A magnetised drum (red and blue poles) lifts iron out of a sand feed, copper coils at both ends."""
     c = Canvas(64)
-    frame(c, 64)
-    # sand hopper under the drum
-    bevel(c, octo(c, 8, 8, 55, 55, 6), LIGHT, DARK, SHADOW, 2, raised=False)
-    sand = [hexc("f7cba4"), hexc("d3ae8d"), hexc("b28768")]
-    c.paint(octo(c, 10, 10, 53, 53, 6), sand[1])
-    # drum: a horizontal cylinder, banded light at the top
-    drum = octo(c, 12, 20, 51, 43, 3)
-    for (a, b), t in (((20, 29), LIGHT), ((30, 43), DARK)):
-        c.paint(drum & rect(c, 0, a, 63, b), t)
-    # magnet poles: alternating red and blue bands across the drum
-    for x, col in ((20, [hexc("d0574d"), hexc("a33c3a")]), (38, [hexc("6a85d8"), hexc("4b5cb0")])):
-        c.paint(drum & rect(c, x, 20, x + 5, 29), col[0])
-        c.paint(drum & rect(c, x, 30, x + 5, 43), col[1])
-    c.paint(rim(drum), SHADOW)
-    # coil housings
-    for x0 in (6, 50):
-        coil = octo(c, x0, 17, x0 + 7, 46, 2)
-        bevel(c, coil, COPPER_L, COPPER_M, COPPER_D, 1)
+    art(c, framed(16, [
+        "MMMMMMMMMMMMMM",
+        "MssssssssssssM",
+        "CCSSSSSSSSSSCC",
+        "CcLRRLLLLBBLcC",
+        "CcLRRLLLLBBLcC",
+        "CcLRRLLLLBBLcC",
+        "CcMRRMMMMBBMcC",
+        "CcDrrDDDDbbDcC",
+        "CcDrrDDDDbbDcC",
+        "CcDrrDDDDbbDcC",
+        "CCSSSSSSSSSSCC",
+        "MssssssssssssM",
+        "MssssssssssssM",
+        "MMMMMMMMMMMMMM",
+    ]), {**PAL, "s": hexc("d3ae8d"), "R": hexc("d0574d"), "r": hexc("a33c3a"), "B": hexc("6a85d8"), "b": hexc("4b5cb0")})
     c.save("blocks/magnetic-separator.png")
 
 
 def ore_concentrator():
-    """2x2. A water-filled washing cyclone with a spiral classifier."""
+    """2x2. A water-filled washing tank with a rake arm."""
     c = Canvas(64)
-    frame(c, 64)
-    bevel(c, octo(c, 7, 7, 56, 56, 9), LIGHT, MID, DARK, 2)
-    tank = octo(c, 12, 12, 51, 51, 9)
-    bevel(c, tank, LIGHT, SHADOW, DARK, 2, raised=False)
-    water = octo(c, 15, 15, 48, 48, 8)
-    shade_sphere(c, water, 32, 32, 22, [hexc("596ac0"), hexc("8aa6ec")])
-    # rake arm across the tank
-    bevel(c, rect(c, 15, 30, 48, 33), LIGHT, MID, DARK, 1)
-    bevel(c, disk(c, 32, 32, 5), LIGHT, MID, DARK, 1)
+    art(c, framed(16, [
+        "MMMMMMMMMMMMMM",
+        "MMMDDDDDDDDMMM",
+        "MMDWWWWWWWWDMM",
+        "MLWWWWWWWWWWDM",
+        "MLWWWWWWWWWWDM",
+        "MLWWWWWWWWWWDM",
+        "MLLLLLSSLLLLDM",
+        "MLwwwwSSwwwwDM",
+        "MLwwwwwwwwwwDM",
+        "MLwwwwwwwwwwDM",
+        "MLwwwwwwwwwwDM",
+        "MMLwwwwwwwwDMM",
+        "MMMLLLLLLLLMMM",
+        "MMMMMMMMMMMMMM",
+    ]), {**PAL, "W": hexc("8aa6ec"), "w": hexc("596ac0")})
     c.save("blocks/ore-concentrator.png")
-
-
-def bricks(c, m, tones, bw=6, bh=3, seed=1):
-    """Running-bond brickwork inside a mask: tones = (light, mid, dark, mortar)."""
-    rnd = random.Random(seed)
-    c.paint(m, tones[3])
-    for row in range(0, c.size[1] // bh + 1):
-        off = (bw // 2) * (row % 2)
-        for col in range(-1, c.size[0] // bw + 1):
-            x0, y0 = col * bw + off, row * bh
-            b = rect(c, x0, y0, x0 + bw - 2, y0 + bh - 2) & m
-            if not b.any():
-                continue
-            c.paint(b, rnd.choice((tones[1], tones[1], tones[2])))
-            c.paint(b & rect(c, x0, y0, x0 + bw - 2, y0), tones[0])
 
 
 def coke_oven():
     """2x2. A brick oven battery: four charging doors and a central firebox."""
+    pal = {**PAL, "k": hexc("a35a45"), "K": hexc("8a4a3a")}
     c = Canvas(64)
-    frame(c, 64, ports=True)
-    body = octo(c, 5, 5, 58, 58, 4)
-    bricks(c, body, (hexc("b5684f"), hexc("a35a45"), hexc("a35a45"), hexc("8a4a3a")), bw=14, bh=7, seed=2)
-    c.paint(rim(body), hexc("4a2f2a"))
-    # iron bands across the battery
-    for y0 in (8, 52):
-        bevel(c, rect(c, 5, y0, 58, y0 + 3), LIGHT, MID, DARK, 1)
-    # oven doors along the top and bottom
-    for x0 in (12, 41):
-        for y0 in (14, 42):
-            bevel(c, rect(c, x0, y0, x0 + 10, y0 + 7), LIGHT, DARK, SHADOW, 1)
-    # firebox
-    fire = octo(c, 21, 23, 42, 40, 5)
-    bevel(c, fire, LIGHT, MID, DARK, 2)
-    hole = octo(c, 25, 26, 38, 37, 4)
-    bevel(c, hole, DARK, HOLE, SHADOW, 1, raised=False)
+    art(c, framed(16, [
+        "LLLLLLLLLLLLLL",
+        "DDDDDDDDDDDDDD",
+        "kkkKkkkkkkKkkk",
+        "kSSkkkKkkkkSSk",
+        "kSSkkkkkkKkSSk",
+        "kkKkDLLLLLkkKk",
+        "kkkkDHHHHLkkkk",
+        "KkkkDHHHHLkkkK",
+        "kkkkDDDDDLkkkk",
+        "kSSkkKkkkkkSSk",
+        "kSSkkkkkKkkSSk",
+        "kkkKkkkkkkKkkk",
+        "LLLLLLLLLLLLLL",
+        "DDDDDDDDDDDDDD",
+    ]), pal)
     c.save("blocks/coke-oven.png")
-
     top = Canvas(64)
-    top.paint(octo(top, 24, 25, 39, 38, 4), GLOW_SOFT)
-    top.paint(octo(top, 26, 27, 37, 36, 3), GLOW)
+    top.paint(rect(top, 24, 28, 39, 35), GLOW)
     top.save("blocks/coke-oven-top.png")
 
 
 def sinter_plant():
     """2x2. A travelling grate carries the mix under an ignition hood."""
     c = Canvas(64)
-    frame(c, 64)
-    # grate bed, running left to right
-    bed = rect(c, 5, 14, 58, 49)
-    bevel(c, bed, LIGHT, SHADOW, DARK, 2, raised=False)
-    for x in range(8, 57, 8):
-        c.paint(rect(c, x, 17, x + 4, 46), hexc("8a5446"))
-    # side rails
-    for y0 in (10, 50):
-        bevel(c, rect(c, 3, y0, 60, y0 + 3), LIGHT, MID, DARK, 1)
-    # ignition hood
-    hood = octo(c, 18, 7, 45, 56, 5)
-    bevel(c, hood, LIGHT, MID, DARK, 2)
-    # burner slot
-    slot = octo(c, 26, 22, 37, 41, 3)
-    bevel(c, slot, DARK, HOLE, SHADOW, 1, raised=False)
+    art(c, framed(16, [
+        "LLLLLLLLLLLLLL",
+        "DDDDDDDDDDDDDD",
+        "gSgSLLLLLLgSgS",
+        "gSgSDMMMMLgSgS",
+        "gSgSDMHHMLgSgS",
+        "gSgSDMHHMLgSgS",
+        "gSgSDMHHMLgSgS",
+        "gSgSDMHHMLgSgS",
+        "gSgSDMHHMLgSgS",
+        "gSgSDMHHMLgSgS",
+        "gSgSDMMMMLgSgS",
+        "gSgSDDDDDLgSgS",
+        "LLLLLLLLLLLLLL",
+        "DDDDDDDDDDDDDD",
+    ]), {**PAL, "g": hexc("8a5446")})
     c.save("blocks/sinter-plant.png")
-
     top = Canvas(64)
-    top.paint(octo(top, 25, 21, 38, 42, 3), GLOW_SOFT)
-    top.paint(octo(top, 27, 23, 36, 40, 2), GLOW)
+    top.paint(rect(top, 28, 20, 35, 43), GLOW)
     top.save("blocks/sinter-plant-top.png")
 
 
@@ -350,17 +385,12 @@ def blast_furnace():
     c = Canvas(96)
     frame(c, 96)
     cx = cy = 48
-    # bustle pipe
-    pipe = disk(c, cx, cy, 40) & ~disk(c, cx, cy, 35)
-    shade_sphere(c, pipe, cx, cy, 40, [DARK, MID, LIGHT])
-    c.paint(rim(pipe), SHADOW)
     # shell: brick-red refractory jacket in steel bands
     shell = disk(c, cx, cy, 33)
     shade_sphere(c, shell, cx, cy, 33, [hexc("8a4a3a"), hexc("b5684f")])
     for r in (33,):
         band = disk(c, cx, cy, r) & ~disk(c, cx, cy, r - 3)
         shade_sphere(c, band, cx, cy, r, [DARK, MID, LIGHT])
-    # tuyeres: eight blast nozzles from the bustle pipe into the shell
     # throat
     throat = disk(c, cx, cy, 17)
     bevel(c, throat, LIGHT, DARK, SHADOW, 2, raised=False)
@@ -377,41 +407,25 @@ def blast_furnace():
 
 
 def arc_furnace():
-    """3x3. A round vessel with a domed roof; three graphite electrodes drop through it in a triangle."""
+    """3x3. A round vessel; three graphite electrodes in copper clamps drop through the roof in a triangle."""
     c = Canvas(96)
     frame(c, 96)
     cx = cy = 48
-    # transformer cabinet and bus bars on the left
-    cab = octo(c, 5, 30, 18, 65, 3)
-    bevel(c, cab, LIGHT, MID, DARK, 2)
-    # vessel
-    vessel = disk(c, cx + 4, cy, 38)
-    shade_sphere(c, vessel, cx + 4, cy, 38, [DARK, MID])
-    c.paint(rim(vessel), SHADOW)
-    # water-cooled roof panels
-    roof = disk(c, cx + 4, cy, 30)
-    shade_sphere(c, roof, cx + 4, cy, 30, [MID, LIGHT])
-    c.paint(rim(roof), SHADOW)
-    # delta: the electrode port ring
-    delta = disk(c, cx + 4, cy, 16)
-    bevel(c, delta, LIGHT, MID, DARK, 2)
-    # electrodes with their copper clamps and arms back to the cabinet
-    ex = [(cx + 4 + math.cos(a) * 9, cy + math.sin(a) * 9) for a in (math.pi, math.pi / 3, -math.pi / 3)]
+    vessel = disk(c, cx, cy, 40)
+    c.paint(vessel, DARK)
+    roof = disk(c, cx, cy, 34)
+    shade_sphere(c, roof, cx, cy, 34, [MID, LIGHT])
+    ex = [(36, 48), (56, 36), (56, 60)]
     for x, y in ex:
-        c.paint(line(c, [(16, y), (x, y)], 4), COPPER_D)
-    for x, y in ex:
-        clamp = disk(c, x, y, 5.5)
-        bevel(c, clamp, COPPER_L, COPPER_M, COPPER_D, 1)
-        c.paint(disk(c, x, y, 3.5), hexc("45464e"))
+        c.paint(rect(c, x - 6, y - 6, x + 5, y + 5), COPPER_D)
+        c.paint(rect(c, x - 6, y - 6, x + 1, y + 1), COPPER_M)
+        c.paint(rect(c, x - 2, y - 2, x + 1, y + 1), hexc("45464e"))
     c.save("blocks/arc-furnace.png")
 
     top = Canvas(96)
-    cx2 = cx + 4
-    top.paint(disk(top, cx2, cy, 8), hexc("c8e0ff", 120))
     for x, y in ex:
-        top.paint(line(top, [(x, y), (cx2, cy)], 2), hexc("d6e8ff"))
-        top.paint(disk(top, x, y, 2), WHITE)
-    top.paint(disk(top, cx2, cy, 3), WHITE)
+        top.paint(rect(top, x - 2, y - 2, x + 1, y + 1), WHITE)
+    top.paint(rect(top, 44, 44, 51, 51), hexc("d6e8ff"))
     top.save("blocks/arc-furnace-top.png")
 
 
@@ -424,7 +438,7 @@ def ore_iron():
         [(16, 15, 6), (6, 26, 3), (26, 8, 3), (26, 25, 4), (7, 10, 3)],
     ]
     for i, lay in enumerate(layouts):
-        c = Canvas(32)
+        c = Canvas(32, pixel=ITEM_PIXEL)
         rnd = random.Random(10 + i)
         for x, y, r in lay:
             pts = []
@@ -438,67 +452,82 @@ def ore_iron():
 
 
 def steel_walls():
-    def wall(s, name):
-        c = Canvas(s)
-        light, hi, mid, dark, deep = STEEL
-        bevel(c, rect(c, 0, 0, s - 1, s - 1), light, mid, dark, 2 if s == 32 else 3)
-        inset = 5 if s == 32 else 8
-        cells = 1
-        step = (s - 2 * inset) // cells
-        for i in range(cells):
-            for j in range(cells):
-                x0, y0 = inset + i * step, inset + j * step
-                plate = octo(c, x0, y0, x0 + step - 2, y0 + step - 2, 3)
-                bevel(c, plate, hi, mid, dark, 1, raised=False)
-        rv = [(2, 2), (s - 4, 2), (2, s - 4), (s - 4, s - 4)]
-        bolts(c, rv, light, deep)
-        c.save(name)
-    wall(32, "blocks/steel/steel-wall.png")
-    wall(64, "blocks/steel/steel-wall-large.png")
+    light, hi, mid, dark, deep = STEEL
+    pal = {"L": light, "h": hi, "M": mid, "D": dark, "d": deep}
+    small = Canvas(32)
+    art(small, [
+        "DLLLLLLL",
+        "DMMMMMML",
+        "DMddddML",
+        "DMdMMhML",
+        "DMdMMhML",
+        "DMdhhhML",
+        "DMMMMMML",
+        "DDDDDDDL",
+    ], pal)
+    small.save("blocks/steel/steel-wall.png")
+    large = Canvas(64)
+    art(large, [
+        "DLLLLLLLLLLLLLLL",
+        "DMMMMMMMMMMMMMML",
+        "DMddddddddddddML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdMMMMMMMMMMhML",
+        "DMdhhhhhhhhhhhML",
+        "DMMMMMMMMMMMMMML",
+        "DDDDDDDDDDDDDDDL",
+    ], pal)
+    large.save("blocks/steel/steel-wall-large.png")
 
 
 def transmission_tower():
-    """2x2. A lattice pylon seen from above: four legs, cross bracing, and an insulated crossarm."""
+    """2x2. A lattice pylon seen from above: four legs, X bracing and an insulated crossarm."""
+    inner = []
+    for y in range(14):
+        row = ""
+        for x in range(14):
+            if (x < 2 or x > 11) and (y < 2 or y > 11):
+                row += "L"
+            elif y == 6:
+                row += "Y" if x in (0, 6, 7, 13) else "L"
+            elif y == 7:
+                row += "y" if x in (0, 6, 7, 13) else "D"
+            elif x in (0, 13) or y in (0, 13) or x == y or x == 13 - y:
+                row += "M"
+            else:
+                row += "S"
+        inner.append(row)
     c = Canvas(64)
-    light, hi, mid, dark, deep = STEEL
-    # footing pad, sunk into the ground
-    bevel(c, rect(c, 0, 0, 63, 63), LIGHT, MID, DARK, 3)
-    bevel(c, octo(c, 4, 4, 59, 59, 6), LIGHT, SHADOW, DARK, 2, raised=False)
-    # legs
-    for x0, y0 in ((6, 6), (50, 6), (6, 50), (50, 50)):
-        bevel(c, rect(c, x0, y0, x0 + 7, y0 + 7), light, mid, dark, 1)
-    # lattice: outer square, X-bracing and inner square
-    for pts in ([(9, 9), (54, 9), (54, 54), (9, 54), (9, 9)], [(9, 9), (54, 54)], [(54, 9), (9, 54)],
-                ):
-        c.paint(line(c, pts, 2), dark)
-        c.paint(line(c, [(x + 1, y - 1) for x, y in pts], 1), hi)
-    # crossarm
-    arm = rect(c, 4, 28, 59, 35)
-    bevel(c, arm, light, mid, dark, 1)
-    # insulator strings: stacked yellow-glazed discs at each end and the peak
-    for x in (9, 32, 54):
-        bevel(c, disk(c, x, 31.5, 4), YELLOW, YELLOW, YELLOW_D, 1)
+    art(c, framed(16, inner, ports=False), PAL)
     c.save("blocks/transmission-tower.png")
 
 
 # ---------------------------------------------------------------- items
 
 def item_iron_ore():
-    c = Canvas(32)
+    c = Canvas(32, pixel=ITEM_PIXEL)
     m = poly(c, [(6, 12), (12, 5), (22, 4), (28, 10), (28, 20), (23, 27), (12, 28), (5, 22)])
     shade_sphere(c, m, 17, 16, 13, [hexc("8c5a48"), hexc("a8705a"), hexc("cf9a7a")])
     c.save("items/iron-ore.png")
 
 
 def item_iron_concentrate():
-    c = Canvas(32)
+    c = Canvas(32, pixel=ITEM_PIXEL)
     pile = poly(c, [(2, 28), (6, 19), (12, 9), (17, 5), (22, 10), (27, 18), (30, 28)])
     shade_sphere(c, pile, 17, 20, 14, [hexc("3c3c47"), hexc("4c4c58"), hexc("686877")])
     c.save("items/iron-concentrate.png")
 
 
 def item_coke():
-    c = Canvas(32)
+    c = Canvas(32, pixel=ITEM_PIXEL)
     m = poly(c, [(5, 14), (10, 6), (20, 4), (27, 9), (29, 19), (24, 27), (13, 29), (5, 23)])
     shade_sphere(c, m, 17, 16, 13, [hexc("4a4a50"), hexc("5f5f66"), hexc("8a8a92")])
     # porous: a few pits
@@ -508,7 +537,7 @@ def item_coke():
 
 
 def item_sinter():
-    c = Canvas(32)
+    c = Canvas(32, pixel=ITEM_PIXEL)
     m = poly(c, [(4, 17), (8, 8), (17, 5), (26, 7), (29, 16), (25, 26), (14, 28), (6, 25)])
     shade_sphere(c, m, 17, 16, 13, [hexc("74443a"), hexc("8a5446"), hexc("b27460")])
     for x, y in ((12, 11), (20, 17), (11, 21)):
@@ -518,7 +547,7 @@ def item_sinter():
 
 def ingot(tones, name, notch=False):
     """A cast ingot in the vanilla three-quarter view (like titanium and metaglass)."""
-    c = Canvas(32)
+    c = Canvas(32, pixel=ITEM_PIXEL)
     light, top, side, dark = tones
     # a bar seen from the front and above: top face over a darker front face
     body = octo(c, 2, 8, 29, 25, 4)
@@ -591,7 +620,7 @@ def halden():
             c.paint(inside & (kind == k) & (band == b), tones[b])
     # thin cloud streaks
     # atmosphere rim
-    ring = (nx * nx + ny * ny <= (1 + PIXEL / R) ** 2) & ~inside
+    ring = (nx * nx + ny * ny <= (1 + c.p / R) ** 2) & ~inside
     c.paint(ring, hexc("4a7fb8", 150))
     c.save("planets/halden.png")
 
