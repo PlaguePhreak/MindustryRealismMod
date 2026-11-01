@@ -207,18 +207,12 @@ def booster_pump():
     # recessed rotor well with an impeller
     well = disk(top, 16, 16, 6)
     bevel(top, well, LIGHT, SHADOW, DARK, 1, raised=False)
-    for ang in (20, 110, 200, 290):
-        a = math.radians(ang)
-        top.paint(line(top, [(16 + math.cos(a) * 1.5, 16 + math.sin(a) * 1.5), (16 + math.cos(a + 0.5) * 4.6, 16 + math.sin(a + 0.5) * 4.6)]), MID)
-    top.paint(disk(top, 16, 16, 1.6), LIGHT)
+    bevel(top, disk(top, 16, 16, 3), LIGHT, MID, DARK, 1)
     # flow arrow on the housing, pointing downstream
     for y in (6, 25):
         for k in range(4):
             top.paint(rect(top, 16 + k, y - 3 + k, 16 + k, y + 3 - k), YELLOW)
         top.paint(rect(top, 16, y + 3, 18, y + 3) & ~rect(top, 17, y + 3, 18, y + 3), YELLOW_D)
-    # arrows in the windows, like a conduit
-    for x in (2, 26):
-        top.paint(line(top, [(x, 11), (x + 2, 15), (x + 2, 16), (x, 20)]), hexc("ffffff", 110))
 
     icon = Canvas(32)
     icon.a = np.array(Image.alpha_composite(bottom.image(), top.image()))
@@ -238,29 +232,21 @@ def magnetic_separator():
     # sand hopper under the drum
     bevel(c, octo(c, 8, 8, 55, 55, 6), LIGHT, DARK, SHADOW, 2, raised=False)
     sand = [hexc("f7cba4"), hexc("d3ae8d"), hexc("b28768")]
-    rnd = random.Random(3)
-    for y in range(11, 53):
-        for x in range(11, 53):
-            if octo(c, 10, 10, 53, 53, 6)[y, x]:
-                c.a[y, x] = sand[1] if rnd.random() < 0.7 else rnd.choice(sand)
+    c.paint(octo(c, 10, 10, 53, 53, 6), sand[1])
     # drum: a horizontal cylinder, banded light at the top
     drum = octo(c, 12, 20, 51, 43, 3)
     ys = np.mgrid[0:64, 0:64][0]
-    for (a, b), t in (((20, 23), STEEL[1]), ((24, 29), MID), ((30, 37), hexc("878a96")), ((38, 43), DARK)):
+    for (a, b), t in (((20, 29), LIGHT), ((30, 43), DARK)):
         c.paint(drum & (ys >= a) & (ys <= b), t)
     # magnet poles: alternating red and blue bands across the drum
-    for i, x in enumerate(range(17, 47, 6)):
-        col = [hexc("d0574d"), hexc("a33c3a")] if i % 2 == 0 else [hexc("6a85d8"), hexc("4b5cb0")]
-        c.paint(drum & rect(c, x, 20, x + 2, 32), col[0])
-        c.paint(drum & rect(c, x, 33, x + 2, 43), col[1])
+    for x, col in ((20, [hexc("d0574d"), hexc("a33c3a")]), (38, [hexc("6a85d8"), hexc("4b5cb0")])):
+        c.paint(drum & rect(c, x, 20, x + 5, 29), col[0])
+        c.paint(drum & rect(c, x, 30, x + 5, 43), col[1])
     c.paint(rim(drum), SHADOW)
     # coil housings
     for x0 in (6, 50):
         coil = octo(c, x0, 17, x0 + 7, 46, 2)
         bevel(c, coil, COPPER_L, COPPER_M, COPPER_D, 1)
-        for y in range(20, 44, 3):
-            c.paint(rect(c, x0 + 1, y, x0 + 6, y) & coil, COPPER_D)
-    bolts(c, [(5, 5), (57, 5), (5, 57), (57, 57)])
     c.save("blocks/magnetic-separator.png")
 
 
@@ -272,22 +258,10 @@ def ore_concentrator():
     tank = octo(c, 12, 12, 51, 51, 9)
     bevel(c, tank, LIGHT, SHADOW, DARK, 2, raised=False)
     water = octo(c, 15, 15, 48, 48, 8)
-    shade_sphere(c, water, 32, 32, 22, [hexc("4a5fa8"), hexc("596ac0"), hexc("6f88d9"), hexc("8aa6ec")])
-    # spiral classifier arm
-    pts = []
-    for i in range(70):
-        t = i / 69 * 2.4 * math.pi
-        r = 2 + t * 2.0
-        pts.append((32 + math.cos(t) * r, 32 + math.sin(t) * r))
-    c.paint(line(c, pts, 2), LIGHT)
-    c.paint(line(c, [(p[0] - 1, p[1] + 1) for p in pts], 1) & ~line(c, pts, 2), DARK)
-    hub = disk(c, 32, 32, 4)
-    bevel(c, hub, LIGHT, MID, DARK, 1)
-    c.paint(disk(c, 32, 32, 1.5), SHADOW)
-    # foam highlights
-    for x, y in ((22, 20), (40, 41), (19, 38), (43, 22)):
-        c.paint(rect(c, x, y, x + 1, y), hexc("d6e0ff"))
-    bolts(c, [(5, 5), (57, 5), (5, 57), (57, 57)])
+    shade_sphere(c, water, 32, 32, 22, [hexc("596ac0"), hexc("8aa6ec")])
+    # rake arm across the tank
+    bevel(c, rect(c, 15, 30, 48, 33), LIGHT, MID, DARK, 1)
+    bevel(c, disk(c, 32, 32, 5), LIGHT, MID, DARK, 1)
     c.save("blocks/ore-concentrator.png")
 
 
@@ -312,17 +286,15 @@ def coke_oven():
     c = Canvas(64)
     frame(c, 64, ports=True)
     body = octo(c, 5, 5, 58, 58, 4)
-    bricks(c, body, (hexc("c47a5e"), hexc("a35a45"), hexc("8a4a3a"), hexc("5c3a33")), seed=2)
+    bricks(c, body, (hexc("b5684f"), hexc("a35a45"), hexc("a35a45"), hexc("8a4a3a")), bw=14, bh=7, seed=2)
     c.paint(rim(body), hexc("4a2f2a"))
     # iron bands across the battery
     for y0 in (8, 52):
         bevel(c, rect(c, 5, y0, 58, y0 + 3), LIGHT, MID, DARK, 1)
     # oven doors along the top and bottom
-    for x0 in (11, 23, 35, 47):
-        for y0 in (13, 42):
-            door = rect(c, x0, y0, x0 + 5, y0 + 8)
-            bevel(c, door, LIGHT, DARK, SHADOW, 1)
-            c.paint(rect(c, x0 + 2, y0 + 2, x0 + 3, y0 + 6), DEEP)
+    for x0 in (12, 41):
+        for y0 in (14, 42):
+            bevel(c, rect(c, x0, y0, x0 + 10, y0 + 7), LIGHT, DARK, SHADOW, 1)
     # firebox
     fire = octo(c, 21, 23, 42, 40, 5)
     bevel(c, fire, LIGHT, MID, DARK, 2)
@@ -333,9 +305,6 @@ def coke_oven():
     top = Canvas(64)
     top.paint(octo(top, 24, 25, 39, 38, 4), GLOW_SOFT)
     top.paint(octo(top, 26, 27, 37, 36, 3), GLOW)
-    for x0 in (11, 23, 35, 47):
-        for y0 in (13, 42):
-            top.paint(rect(top, x0 + 2, y0 + 2, x0 + 3, y0 + 6), GLOW)
     top.save("blocks/coke-oven-top.png")
 
 
@@ -346,21 +315,17 @@ def sinter_plant():
     # grate bed, running left to right
     bed = rect(c, 5, 14, 58, 49)
     bevel(c, bed, LIGHT, SHADOW, DARK, 2, raised=False)
-    for x in range(8, 57, 4):
-        c.paint(rect(c, x, 17, x + 2, 46), hexc("7a4c40"))
-        c.paint(rect(c, x, 17, x + 2, 18), hexc("a8644f"))
-        c.paint(rect(c, x + 2, 19, x + 2, 46), hexc("5a3830"))
+    for x in range(8, 57, 8):
+        c.paint(rect(c, x, 17, x + 4, 46), hexc("8a5446"))
     # side rails
     for y0 in (10, 50):
         bevel(c, rect(c, 3, y0, 60, y0 + 3), LIGHT, MID, DARK, 1)
     # ignition hood
     hood = octo(c, 18, 7, 45, 56, 5)
     bevel(c, hood, LIGHT, MID, DARK, 2)
-    bevel(c, octo(c, 22, 11, 41, 52, 4), LIGHT, MID, DARK, 1, raised=False)
     # burner slot
     slot = octo(c, 26, 22, 37, 41, 3)
     bevel(c, slot, DARK, HOLE, SHADOW, 1, raised=False)
-    bolts(c, [(20, 9), (42, 9), (20, 53), (42, 53)])
     c.save("blocks/sinter-plant.png")
 
     top = Canvas(64)
@@ -378,23 +343,13 @@ def blast_furnace():
     pipe = disk(c, cx, cy, 40) & ~disk(c, cx, cy, 35)
     shade_sphere(c, pipe, cx, cy, 40, [DARK, MID, LIGHT])
     c.paint(rim(pipe), SHADOW)
-    # four support columns in the corners
-    for x0, y0 in ((4, 4), (80, 4), (4, 80), (80, 80)):
-        bevel(c, octo(c, x0, y0, x0 + 11, y0 + 11, 3), LIGHT, MID, DARK, 2)
-        c.paint(rect(c, x0 + 4, y0 + 4, x0 + 7, y0 + 7), SHADOW)
     # shell: brick-red refractory jacket in steel bands
     shell = disk(c, cx, cy, 33)
-    shade_sphere(c, shell, cx, cy, 33, [hexc("6b3a30"), hexc("8a4a3a"), hexc("a35a45"), hexc("c47a5e")])
-    for r in (33, 26):
+    shade_sphere(c, shell, cx, cy, 33, [hexc("8a4a3a"), hexc("b5684f")])
+    for r in (33,):
         band = disk(c, cx, cy, r) & ~disk(c, cx, cy, r - 3)
         shade_sphere(c, band, cx, cy, r, [DARK, MID, LIGHT])
     # tuyeres: eight blast nozzles from the bustle pipe into the shell
-    for i in range(8):
-        a = i * math.pi / 4
-        p0 = (cx + math.cos(a) * 36, cy + math.sin(a) * 36)
-        p1 = (cx + math.cos(a) * 25, cy + math.sin(a) * 25)
-        c.paint(line(c, [p0, p1], 4), MID)
-        c.paint(line(c, [p0, p1], 2), LIGHT)
     # throat
     throat = disk(c, cx, cy, 17)
     bevel(c, throat, LIGHT, DARK, SHADOW, 2, raised=False)
@@ -405,12 +360,8 @@ def blast_furnace():
     c.save("blocks/blast-furnace.png")
 
     top = Canvas(96)
-    ring = disk(top, cx, cy, 12) & ~disk(top, cx, cy, 6)
     top.paint(disk(top, cx, cy, 13) & ~disk(top, cx, cy, 6), GLOW_SOFT)
-    top.paint(ring & ~disk(top, cx, cy, 8), GLOW)
-    for i in range(8):
-        a = i * math.pi / 4 + math.pi / 8
-        top.paint(disk(top, cx + math.cos(a) * 10, cy + math.sin(a) * 10, 1.5), WHITE)
+    top.paint(disk(top, cx, cy, 12) & ~disk(top, cx, cy, 8), GLOW)
     top.save("blocks/blast-furnace-top.png")
 
 
@@ -422,20 +373,13 @@ def arc_furnace():
     # transformer cabinet and bus bars on the left
     cab = octo(c, 5, 30, 18, 65, 3)
     bevel(c, cab, LIGHT, MID, DARK, 2)
-    for y in (36, 44, 52, 60):
-        c.paint(rect(c, 8, y, 15, y + 1), SHADOW)
     # vessel
     vessel = disk(c, cx + 4, cy, 38)
-    shade_sphere(c, vessel, cx + 4, cy, 38, [SHADOW, DARK, MID, LIGHT])
+    shade_sphere(c, vessel, cx + 4, cy, 38, [DARK, MID])
     c.paint(rim(vessel), SHADOW)
     # water-cooled roof panels
     roof = disk(c, cx + 4, cy, 30)
-    shade_sphere(c, roof, cx + 4, cy, 30, [DARK, MID, hexc("a4a8b2"), LIGHT])
-    ys, xs = np.mgrid[0:96, 0:96]
-    ang = np.arctan2(ys + 0.5 - cy, xs + 0.5 - cx - 4)
-    for k in range(12):
-        a = -math.pi + k * math.pi / 6
-        c.paint(roof & (np.abs(np.angle(np.exp(1j * (ang - a)))) < 0.05), DARK)
+    shade_sphere(c, roof, cx + 4, cy, 30, [MID, LIGHT])
     c.paint(rim(roof), SHADOW)
     # delta: the electrode port ring
     delta = disk(c, cx + 4, cy, 16)
@@ -444,12 +388,10 @@ def arc_furnace():
     ex = [(cx + 4 + math.cos(a) * 9, cy + math.sin(a) * 9) for a in (math.pi, math.pi / 3, -math.pi / 3)]
     for x, y in ex:
         c.paint(line(c, [(16, y), (x, y)], 4), COPPER_D)
-        c.paint(line(c, [(16, y - 1), (x, y - 1)], 2), COPPER_M)
     for x, y in ex:
         clamp = disk(c, x, y, 5.5)
         bevel(c, clamp, COPPER_L, COPPER_M, COPPER_D, 1)
-        el = disk(c, x, y, 3.5)
-        shade_sphere(c, el, x, y, 3.5, [hexc("3a3a40"), hexc("55565e"), hexc("7a7c86")])
+        c.paint(disk(c, x, y, 3.5), hexc("45464e"))
     c.save("blocks/arc-furnace.png")
 
     top = Canvas(96)
@@ -465,7 +407,6 @@ def arc_furnace():
 def ore_iron():
     """Three ore overlays, transparent around the rocks like vanilla ores."""
     tones = [hexc("cf9a7a"), hexc("a8705a"), hexc("7c4d3e")]
-    rust = hexc("d87a4a")
     layouts = [
         [(8, 8, 5), (22, 10, 4), (14, 21, 6), (25, 24, 3)],
         [(9, 20, 5), (21, 8, 5), (23, 22, 4), (7, 7, 3)],
@@ -481,9 +422,7 @@ def ore_iron():
                 rr = r * rnd.uniform(0.75, 1.1)
                 pts.append((x + math.cos(a) * rr, y + math.sin(a) * rr))
             m = poly(c, pts)
-            shade_sphere(c, m, x, y, r, [tones[2], tones[1], tones[0]])
-            if r >= 4:
-                c.paint(rect(c, x - 1, y, x, y) & m, rust)
+            shade_sphere(c, m, x, y, r, [tones[1], tones[0]])
         c.save(f"blocks/ore-iron{i + 1}.png")
 
 
@@ -493,18 +432,14 @@ def steel_walls():
         light, hi, mid, dark, deep = STEEL
         bevel(c, rect(c, 0, 0, s - 1, s - 1), light, mid, dark, 2 if s == 32 else 3)
         inset = 5 if s == 32 else 8
-        cells = 1 if s == 32 else 2
+        cells = 1
         step = (s - 2 * inset) // cells
         for i in range(cells):
             for j in range(cells):
                 x0, y0 = inset + i * step, inset + j * step
                 plate = octo(c, x0, y0, x0 + step - 2, y0 + step - 2, 3)
                 bevel(c, plate, hi, mid, dark, 1, raised=False)
-                # brushed highlight across each plate
-                c.paint(line(c, [(x0 + 3, y0 + step - 6), (x0 + step - 6, y0 + 3)]) & plate, hi)
         rv = [(2, 2), (s - 4, 2), (2, s - 4), (s - 4, s - 4)]
-        if s > 32:
-            rv += [(s // 2 - 1, 2), (s // 2 - 1, s - 4), (2, s // 2 - 1), (s - 4, s // 2 - 1)]
         bolts(c, rv, light, deep)
         c.save(name)
     wall(32, "blocks/steel/steel-wall.png")
@@ -523,7 +458,7 @@ def transmission_tower():
         bevel(c, rect(c, x0, y0, x0 + 7, y0 + 7), light, mid, dark, 1)
     # lattice: outer square, X-bracing and inner square
     for pts in ([(9, 9), (54, 9), (54, 54), (9, 54), (9, 9)], [(9, 9), (54, 54)], [(54, 9), (9, 54)],
-                [(20, 20), (43, 20), (43, 43), (20, 43), (20, 20)]):
+                ):
         c.paint(line(c, pts, 2), dark)
         c.paint(line(c, [(x + 1, y - 1) for x, y in pts], 1), hi)
     # crossarm
@@ -531,11 +466,7 @@ def transmission_tower():
     bevel(c, arm, light, mid, dark, 1)
     # insulator strings: stacked yellow-glazed discs at each end and the peak
     for x in (9, 32, 54):
-        for k, y in enumerate((26, 29, 32, 35)):
-            d = disk(c, x, y + 1.5, 3.2 - 0.3 * k)
-            c.paint(d, YELLOW_D)
-            c.paint(d & ~disk(c, x - 0.8, y + 2.3, 3.0 - 0.3 * k), YELLOW)
-        c.paint(disk(c, x, 32, 1.4), deep)
+        bevel(c, disk(c, x, 31.5, 4), YELLOW, YELLOW, YELLOW_D, 1)
     c.save("blocks/transmission-tower.png")
 
 
@@ -544,45 +475,33 @@ def transmission_tower():
 def item_iron_ore():
     c = Canvas(32)
     m = poly(c, [(6, 12), (12, 5), (22, 4), (28, 10), (28, 20), (23, 27), (12, 28), (5, 22)])
-    shade_sphere(c, m, 17, 16, 13, [hexc("6b4036"), hexc("8c5a48"), hexc("a8705a"), hexc("cf9a7a")])
-    # rust and dark flecks
-    for x, y in ((11, 11), (19, 9), (14, 19), (21, 18), (9, 20)):
-        c.paint(rect(c, x, y, x + 1, y + 1) & m, hexc("d87a4a"))
-    for x, y in ((17, 13), (12, 24), (24, 13)):
-        c.paint(rect(c, x, y, x + 1, y) & m, hexc("4e2f28"))
+    shade_sphere(c, m, 17, 16, 13, [hexc("8c5a48"), hexc("a8705a"), hexc("cf9a7a")])
     c.save("items/iron-ore.png")
 
 
 def item_iron_concentrate():
     c = Canvas(32)
     pile = poly(c, [(2, 28), (6, 19), (12, 9), (17, 5), (22, 10), (27, 18), (30, 28)])
-    shade_sphere(c, pile, 17, 20, 14, [hexc("2d2d36"), hexc("3c3c47"), hexc("4c4c58"), hexc("686877")])
-    rnd = random.Random(5)
-    for _ in range(40):
-        x, y = rnd.randint(4, 28), rnd.randint(8, 27)
-        if pile[y, x]:
-            c.a[y, x] = rnd.choice([hexc("7c7d8e"), hexc("2a2a33"), hexc("5b5b6a")])
+    shade_sphere(c, pile, 17, 20, 14, [hexc("3c3c47"), hexc("4c4c58"), hexc("686877")])
     c.save("items/iron-concentrate.png")
 
 
 def item_coke():
     c = Canvas(32)
     m = poly(c, [(5, 14), (10, 6), (20, 4), (27, 9), (29, 19), (24, 27), (13, 29), (5, 23)])
-    shade_sphere(c, m, 17, 16, 13, [hexc("38383d"), hexc("4a4a50"), hexc("5f5f66"), hexc("8a8a92")])
-    # porous: pits with a lit lower lip
-    for x, y in ((11, 11), (19, 9), (15, 17), (23, 16), (10, 22), (19, 23)):
-        c.paint(rect(c, x, y, x + 2, y + 1) & m, hexc("232327"))
-        c.paint(rect(c, x, y + 2, x + 2, y + 2) & m, hexc("8a8a92"))
+    shade_sphere(c, m, 17, 16, 13, [hexc("4a4a50"), hexc("5f5f66"), hexc("8a8a92")])
+    # porous: a few pits
+    for x, y in ((12, 11), (20, 17), (11, 21)):
+        c.paint(rect(c, x, y, x + 2, y + 2) & m, hexc("2e2e33"))
     c.save("items/coke.png")
 
 
 def item_sinter():
     c = Canvas(32)
     m = poly(c, [(4, 17), (8, 8), (17, 5), (26, 7), (29, 16), (25, 26), (14, 28), (6, 25)])
-    shade_sphere(c, m, 17, 16, 13, [hexc("5a3029"), hexc("74443a"), hexc("8a5446"), hexc("b27460")])
-    for x, y in ((10, 12), (18, 9), (14, 18), (22, 15), (9, 21), (19, 23), (24, 21)):
-        c.paint(rect(c, x, y, x + 1, y + 1) & m, hexc("3e2420"))
-        c.paint(rect(c, x + 2, y, x + 2, y) & m, hexc("c98c72"))
+    shade_sphere(c, m, 17, 16, 13, [hexc("74443a"), hexc("8a5446"), hexc("b27460")])
+    for x, y in ((12, 11), (20, 17), (11, 21)):
+        c.paint(rect(c, x, y, x + 2, y + 2) & m, hexc("4a2a24"))
     c.save("items/sinter.png")
 
 
@@ -600,13 +519,8 @@ def ingot(tones, name, notch=False):
     c.paint(line(c, [(4, 14), (16, 5)]) & face, light)
     c.paint(line(c, [(16, 5), (27, 12)]) & face, light)
     if notch:
-        # pig iron is cast in sand moulds: notched across, with a rough top
-        for x0, y0 in ((8, 16), (13, 19)):
-            c.paint(line(c, [(x0, y0), (x0 + 11, y0 - 9)]) & face, dark)
-            c.paint(line(c, [(x0 + 1, y0), (x0 + 12, y0 - 9)]) & face, light)
-    else:
-        # steel: a bright polished stripe
-        c.paint(line(c, [(9, 16), (20, 8)], 2) & face, light)
+        # pig iron is cast in sand moulds with a notch across the middle
+        c.paint(line(c, [(10, 18), (22, 8)], 2) & face, dark)
     c.save(name)
 
 
@@ -646,10 +560,10 @@ def halden():
                     wgt = (fu if di else 1 - fu) * (fv if dj else 1 - fv) * (fw if dk else 1 - fw)
                     out = out + wgt * g[i + di, j + dj, k + dk]
         return out
-    h = noise(3, 1) * 0.6 + noise(6, 2) * 0.3 + noise(12, 3) * 0.1
+    h = noise(3, 1) * 0.7 + noise(5, 2) * 0.3
     lat = np.abs(ny)
     light = np.clip(nx * 0.55 - ny * 0.45 + nz * 0.7, 0, 1)
-    band = np.digitize(light, [0.35, 0.65, 0.9])  # 0 dark .. 3 bright
+    band = np.digitize(light, [0.4, 0.8]) + 1  # 1 dark .. 3 bright
 
     pal = {
         "ocean": [hexc("1f3a66"), hexc("2a4f86"), hexc("3767a6"), hexc("4a7fb8")],
@@ -659,16 +573,13 @@ def halden():
         "ice": [hexc("8fa2b4"), hexc("b4c4d2"), hexc("d6e0ea"), hexc("f0f5fa")],
     }
     kind = np.full((64, 64), "ocean", object)
-    kind[h > 0.47] = "shallow"
     kind[h > 0.52] = "green"
     kind[(h > 0.63)] = "iron"
     kind[lat + (h - 0.5) * 0.3 > 0.82] = "ice"
     for k, tones in pal.items():
-        for b in range(4):
+        for b in range(1, 4):
             c.paint(inside & (kind == k) & (band == b), tones[b])
     # thin cloud streaks
-    cl = noise(8, 9)
-    c.paint(inside & (cl > 0.68) & (band >= 1), hexc("e8eef2", 170))
     # atmosphere rim
     ring = (nx * nx + ny * ny <= (1 + 2 / R) ** 2) & ~inside
     c.paint(ring, hexc("4a7fb8", 150))
