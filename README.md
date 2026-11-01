@@ -152,4 +152,4 @@ java -cp server-release.jar:build/check PlanetCheck
 
 ## Sprites
 
-Every sprite is drawn by `tools/sprites/gen_sprites.py` in the vanilla Serpulo style (32 px per tile, the vanilla metal palette, light from the top right). To change one, edit its function and run `python3 tools/sprites/gen_sprites.py` from the repository root (needs Pillow and numpy). The furnaces also get a `-top` sprite, which the game lights up while they run.
+Every sprite is drawn by `tools/sprites/gen_sprites.py` in the vanilla Serpulo style (chunky 2x2 pixels on a 32 px per tile canvas, the vanilla metal palette, light from the top right; `PIXEL` sets the chunkiness). To change one, edit its function and run `python3 tools/sprites/gen_sprites.py` from the repository root (needs Pillow and numpy). The furnaces also get a `-top` sprite, which the game lights up while they run.

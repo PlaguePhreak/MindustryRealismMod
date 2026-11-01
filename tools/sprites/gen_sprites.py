@@ -19,6 +19,10 @@ import random
 import numpy as np
 from PIL import Image, ImageDraw
 
+# Art is drawn on a grid of PIXEL x PIXEL screen pixels, so 2 gives chunky 16-px-per-tile art that is saved at the
+# 32-px-per-tile size the game expects. All coordinates below are in saved (32 px per tile) units.
+PIXEL = 2
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "assets", "sprites")
 
@@ -44,7 +48,8 @@ STEEL = [hexc("eef3f8"), hexc("ccd5df"), hexc("a8b3c1"), hexc("808b9b"), hexc("5
 
 class Canvas:
     def __init__(self, w, h=None):
-        self.w, self.h = w, h or w
+        self.size = (w, h or w)
+        self.w, self.h = w // PIXEL, (h or w) // PIXEL
         self.a = np.zeros((self.h, self.w, 4), np.uint8)
 
     def paint(self, mask, color):
@@ -70,7 +75,7 @@ class Canvas:
     def save(self, rel):
         path = os.path.join(OUT, rel)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        self.image().save(path)
+        self.image().resize(self.size, Image.NEAREST).save(path)
         return path
 
 
@@ -78,8 +83,20 @@ def empty(c):
     return np.zeros((c.h, c.w), bool)
 
 
+def g(v):
+    """Saved-pixel coordinate to grid cell."""
+    return int(math.floor(v / PIXEL))
+
+
+def grid(c):
+    """Saved-pixel coordinates of each grid cell's centre."""
+    ys, xs = np.mgrid[0:c.h, 0:c.w]
+    return (ys + 0.5) * PIXEL, (xs + 0.5) * PIXEL
+
+
 def rect(c, x0, y0, x1, y1):
     """Inclusive pixel rectangle."""
+    x0, y0, x1, y1 = g(x0), g(y0), g(x1), g(y1)
     m = empty(c)
     m[max(y0, 0):y1 + 1, max(x0, 0):x1 + 1] = True
     return m
@@ -88,31 +105,31 @@ def rect(c, x0, y0, x1, y1):
 def octo(c, x0, y0, x1, y1, k):
     """Rectangle with its corners cut at 45 degrees by k pixels."""
     m = rect(c, x0, y0, x1, y1)
-    ys, xs = np.mgrid[0:c.h, 0:c.w]
-    for cx, cy, sx, sy in ((x0, y0, 1, 1), (x1, y0, -1, 1), (x0, y1, 1, -1), (x1, y1, -1, -1)):
+    ys, xs = grid(c)
+    for cx, cy, sx, sy in ((x0, y0, 1, 1), (x1 + 1, y0, -1, 1), (x0, y1 + 1, 1, -1), (x1 + 1, y1 + 1, -1, -1)):
         m &= ((xs - cx) * sx + (ys - cy) * sy) >= k
     return m
 
 
 def disk(c, cx, cy, r):
-    ys, xs = np.mgrid[0:c.h, 0:c.w]
-    return (xs + 0.5 - cx) ** 2 + (ys + 0.5 - cy) ** 2 <= r * r
+    ys, xs = grid(c)
+    return (xs - cx) ** 2 + (ys - cy) ** 2 <= r * r
 
 
 def ellipse(c, cx, cy, rx, ry):
-    ys, xs = np.mgrid[0:c.h, 0:c.w]
-    return ((xs + 0.5 - cx) / rx) ** 2 + ((ys + 0.5 - cy) / ry) ** 2 <= 1
+    ys, xs = grid(c)
+    return ((xs - cx) / rx) ** 2 + ((ys - cy) / ry) ** 2 <= 1
 
 
 def poly(c, pts):
     im = Image.new("L", (c.w, c.h))
-    ImageDraw.Draw(im).polygon(pts, fill=255)
+    ImageDraw.Draw(im).polygon([(x / PIXEL, y / PIXEL) for x, y in pts], fill=255)
     return np.array(im) > 0
 
 
 def line(c, pts, width=1):
     im = Image.new("L", (c.w, c.h))
-    ImageDraw.Draw(im).line(pts, fill=255, width=width)
+    ImageDraw.Draw(im).line([(x / PIXEL, y / PIXEL) for x, y in pts], fill=255, width=max(1, round(width / PIXEL)))
     return np.array(im) > 0
 
 
@@ -132,7 +149,9 @@ def runs(m):
 
 
 def bevel(c, m, light, mid, dark, width=2, raised=True):
-    """Fills a shape and shades its rim: lit from the top right when raised, from the bottom left when sunk."""
+    """Fills a shape and shades its rim: lit from the top right when raised, from the bottom left when sunk.
+    width is in grid cells."""
+    width = max(1, round(width * 2 / PIXEL / 2)) if width > 1 else 1
     c.paint(m, mid)
     up, right, down, left = runs(m)
     near = np.stack([up, right, down, left])
@@ -151,8 +170,8 @@ def rim(m):
 
 def shade_sphere(c, m, cx, cy, r, tones, lx=0.55, ly=-0.6):
     """Bands of tones across a round shape, brightest towards the light (top right)."""
-    ys, xs = np.mgrid[0:c.h, 0:c.w]
-    dx, dy = (xs + 0.5 - cx) / r, (ys + 0.5 - cy) / r
+    ys, xs = grid(c)
+    dx, dy = (xs - cx) / r, (ys - cy) / r
     lit = dx * lx + dy * ly + 0.15 * np.sqrt(np.clip(1 - dx * dx - dy * dy, 0, 1))
     n = len(tones)
     edges = np.linspace(-0.75, 0.8, n + 1)[1:-1]
@@ -199,20 +218,14 @@ def booster_pump():
     # pipe walls, as on a conduit
     for y0 in (0, 24):
         bevel(top, rect(top, 0, y0, 31, y0 + 7), LIGHT, MID, DARK, 1)
-    # flange collars where the pipe meets the housing
-    for x0 in (6, 23):
-        bevel(top, rect(top, x0, 2, x0 + 2, 29), LIGHT, MID, DARK, 1)
-    # pump housing
-    bevel(top, octo(top, 9, 3, 22, 28, 3), LIGHT, MID, DARK, 1)
-    # recessed rotor well with an impeller
-    well = disk(top, 16, 16, 6)
-    bevel(top, well, LIGHT, SHADOW, DARK, 1, raised=False)
-    bevel(top, disk(top, 16, 16, 3), LIGHT, MID, DARK, 1)
-    # flow arrow on the housing, pointing downstream
-    for y in (6, 25):
-        for k in range(4):
-            top.paint(rect(top, 16 + k, y - 3 + k, 16 + k, y + 3 - k), YELLOW)
-        top.paint(rect(top, 16, y + 3, 18, y + 3) & ~rect(top, 17, y + 3, 18, y + 3), YELLOW_D)
+    # pump housing with a sunken rotor
+    bevel(top, octo(top, 8, 2, 23, 29, 4), LIGHT, MID, DARK, 1)
+    top.paint(rect(top, 12, 12, 19, 19), SHADOW)
+    top.paint(rect(top, 14, 14, 17, 17), LIGHT)
+    # flow arrows on the housing, pointing downstream
+    for y in (4, 22):
+        top.paint(rect(top, 14, y, 15, y + 5), YELLOW)
+        top.paint(rect(top, 16, y + 2, 17, y + 3), YELLOW)
 
     icon = Canvas(32)
     icon.a = np.array(Image.alpha_composite(bottom.image(), top.image()))
@@ -235,9 +248,8 @@ def magnetic_separator():
     c.paint(octo(c, 10, 10, 53, 53, 6), sand[1])
     # drum: a horizontal cylinder, banded light at the top
     drum = octo(c, 12, 20, 51, 43, 3)
-    ys = np.mgrid[0:64, 0:64][0]
     for (a, b), t in (((20, 29), LIGHT), ((30, 43), DARK)):
-        c.paint(drum & (ys >= a) & (ys <= b), t)
+        c.paint(drum & rect(c, 0, a, 63, b), t)
     # magnet poles: alternating red and blue bands across the drum
     for x, col in ((20, [hexc("d0574d"), hexc("a33c3a")]), (38, [hexc("6a85d8"), hexc("4b5cb0")])):
         c.paint(drum & rect(c, x, 20, x + 5, 29), col[0])
@@ -268,17 +280,16 @@ def ore_concentrator():
 def bricks(c, m, tones, bw=6, bh=3, seed=1):
     """Running-bond brickwork inside a mask: tones = (light, mid, dark, mortar)."""
     rnd = random.Random(seed)
-    ys, xs = np.mgrid[0:c.h, 0:c.w]
     c.paint(m, tones[3])
-    for row in range(0, c.h // bh + 1):
+    for row in range(0, c.size[1] // bh + 1):
         off = (bw // 2) * (row % 2)
-        for col in range(-1, c.w // bw + 1):
+        for col in range(-1, c.size[0] // bw + 1):
             x0, y0 = col * bw + off, row * bh
             b = rect(c, x0, y0, x0 + bw - 2, y0 + bh - 2) & m
             if not b.any():
                 continue
             c.paint(b, rnd.choice((tones[1], tones[1], tones[2])))
-            c.paint(b & (ys == y0), tones[0])
+            c.paint(b & rect(c, x0, y0, x0 + bw - 2, y0), tones[0])
 
 
 def coke_oven():
@@ -509,18 +520,17 @@ def ingot(tones, name, notch=False):
     """A cast ingot in the vanilla three-quarter view (like titanium and metaglass)."""
     c = Canvas(32)
     light, top, side, dark = tones
-    # top face (parallelogram), front face and end face
-    face = poly(c, [(2, 14), (16, 3), (30, 12), (16, 23)])
-    front = poly(c, [(2, 14), (16, 23), (16, 29), (2, 20)])
-    end = poly(c, [(16, 23), (30, 12), (30, 18), (16, 29)])
+    # a bar seen from the front and above: top face over a darker front face
+    body = octo(c, 2, 8, 29, 25, 4)
+    face = octo(c, 2, 8, 29, 19, 4)
+    c.paint(body, dark)
+    c.paint(body & rect(c, 22, 0, 31, 31), side)
     c.paint(face, top)
-    c.paint(front, dark)
-    c.paint(end, side)
-    c.paint(line(c, [(4, 14), (16, 5)]) & face, light)
-    c.paint(line(c, [(16, 5), (27, 12)]) & face, light)
+    c.paint(rim(face) & rect(c, 0, 0, 31, 9), light)
+    c.paint(rim(face) & rect(c, 28, 0, 31, 31), light)
     if notch:
         # pig iron is cast in sand moulds with a notch across the middle
-        c.paint(line(c, [(10, 18), (22, 8)], 2) & face, dark)
+        c.paint(rect(c, 14, 10, 17, 17) & face, side)
     c.save(name)
 
 
@@ -540,8 +550,8 @@ def halden():
     c = Canvas(64)
     cx = cy = 32
     R = 29
-    ys, xs = np.mgrid[0:64, 0:64]
-    nx, ny = (xs + 0.5 - cx) / R, (ys + 0.5 - cy) / R
+    ys, xs = grid(c)
+    nx, ny = (xs - cx) / R, (ys - cy) / R
     inside = nx * nx + ny * ny <= 1
     nz = np.sqrt(np.clip(1 - nx * nx - ny * ny, 0, 1))
     # value noise on the sphere surface
@@ -572,7 +582,7 @@ def halden():
         "iron": [hexc("5a2c22"), hexc("7a3d2c"), hexc("a3553a"), hexc("c0643a")],
         "ice": [hexc("8fa2b4"), hexc("b4c4d2"), hexc("d6e0ea"), hexc("f0f5fa")],
     }
-    kind = np.full((64, 64), "ocean", object)
+    kind = np.full((c.h, c.w), "ocean", object)
     kind[h > 0.52] = "green"
     kind[(h > 0.63)] = "iron"
     kind[lat + (h - 0.5) * 0.3 > 0.82] = "ice"
@@ -581,7 +591,7 @@ def halden():
             c.paint(inside & (kind == k) & (band == b), tones[b])
     # thin cloud streaks
     # atmosphere rim
-    ring = (nx * nx + ny * ny <= (1 + 2 / R) ** 2) & ~inside
+    ring = (nx * nx + ny * ny <= (1 + PIXEL / R) ** 2) & ~inside
     c.paint(ring, hexc("4a7fb8", 150))
     c.save("planets/halden.png")
 
