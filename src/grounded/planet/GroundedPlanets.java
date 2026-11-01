@@ -1,12 +1,16 @@
 package grounded.planet;
 
 import arc.graphics.*;
+import arc.scene.style.*;
 import mindustry.content.*;
 import mindustry.content.TechTree.*;
+import mindustry.game.Objectives.*;
 import mindustry.game.*;
 import mindustry.graphics.g3d.*;
 import mindustry.type.*;
 import mindustry.world.meta.*;
+
+import static mindustry.Vars.*;
 
 /** The mod's planets. Rime and Cinder will join Halden here. */
 public class GroundedPlanets{
@@ -31,7 +35,7 @@ public class GroundedPlanets{
                 new HexSkyMesh(this, 9, 0.6f, 0.16f, 5, Color.valueOf("c9d4dc").a(0.65f), 2, 0.45f, 1f, 0.41f)
             );
 
-            //shares Serpulo's blocks and research; Halden's own industry (the steel chain) will hang off the same tree
+            //builds with Serpulo's blocks, so they are shown on Halden; Halden gets its own tree in buildTechTree()
             techTree = Planets.serpulo.techTree;
 
             alwaysUnlocked = true;
@@ -63,8 +67,54 @@ public class GroundedPlanets{
         }};
         //temperate at the equator, freezing at the poles
         Climate.planets.put(halden, new Climate(30f, -20f));
+    }
 
-        //a node at the root of the research tree, so Halden and its resources can be looked up there
-        new TechNode(Planets.serpulo.techTree, halden, ItemStack.empty);
+    /** Halden's own research tree, which appears in the research dialog's tree selector. */
+    public static TechNode haldenTree;
+
+    /**
+     * Gives Halden its own research tree. It mirrors Serpulo's, since Halden builds with the same blocks, minus
+     * Serpulo's story sectors. Research is shared: unlocking a block in either tree unlocks it in both. Call after
+     * every other node has been added to Serpulo's tree.
+     */
+    public static void buildTechTree(){
+        TechNode serpulo = Planets.serpulo.techTree;
+        haldenTree = new TechNode(null, serpulo.content, serpulo.requirements);
+        haldenTree.name = "halden";
+        haldenTree.planet = halden;
+        TechTree.roots.add(haldenTree);
+        new TechNode(haldenTree, halden, ItemStack.empty);
+
+        for(TechNode child : serpulo.children){
+            mirror(child, haldenTree);
+        }
+
+        //blocks keep pointing at their Serpulo node, which the rest of the game expects
+        serpulo.each(n -> n.content.techNode = n);
+
+        halden.techTree = haldenTree;
+        haldenTree.addPlanet(halden);
+        if(!headless && halden.uiIcon != null && halden.uiIcon.found()){
+            haldenTree.icon = new TextureRegionDrawable(halden.uiIcon);
+        }
+    }
+
+    static void mirror(TechNode source, TechNode parent){
+        //Serpulo's story sectors and the planet itself don't belong on Halden; their children move up a level
+        if(source.content instanceof SectorPreset || source.content == halden){
+            for(TechNode child : source.children) mirror(child, parent);
+            return;
+        }
+
+        TechNode copy = new TechNode(parent, source.content, source.requirements);
+        for(var objective : source.objectives){
+            //keep research and production goals; drop ones tied to Serpulo's sectors
+            if(objective instanceof Produce || (objective instanceof Research res && !copy.objectives.contains(o -> o instanceof Research r && r.content == res.content))){
+                copy.objectives.add(objective);
+            }
+        }
+        for(TechNode child : source.children){
+            mirror(child, copy);
+        }
     }
 }
